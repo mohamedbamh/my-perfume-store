@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -156,7 +155,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;color:#1f2937;padding-bot
     <span class="tbg bb" id="cnt-pack">0</span> 🎁 الباكات
   </button>
   <button class="tab" id="tab-fardi" onclick="switchTab('fardi')">
-    <span class="tbg bg" id="cnt-fardi">0</span> 👑 مميزة
+    <span class="tbg bg" id="cnt-fardi">0</span> 👑 فردي
   </button>
 </div>
 
@@ -179,15 +178,10 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;color:#1f2937;padding-bot
 
 <div class="sec" id="sec-fardi">
   <div class="fn" id="fn">
-    👑 العطور المميزة — خصم 20% على كل عطر عند شراء 2 أو أكثر
-    <br><span style="font-size:11px;opacity:.8;">مثال: عطر بـ 1500 دج يصبح 1200 دج عند شراء عطرين فأكثر 🎁</span>
-  </div>
-  <div class="itabs" style="margin-bottom:10px;">
-    <button class="it ib" id="it-fn" onclick="switchMimaza('fn')">🌸 نسائية مميزة</button>
-    <button class="it" id="it-fm" onclick="switchMimaza('fm')">💼 رجالية مميزة</button>
-  </div>
-  <div class="pgrid" id="grid-fn"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
-  <div class="pgrid" id="grid-fm" style="display:none;"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
+  👑 العطور الفردية — اشترِ مع باك واحصل على خصم 20%
+  <br><span style="font-size:11px;opacity:.8;">مثال: عطر بـ 1500 دج يصبح 1200 دج عند إضافته مع باك 🎁</span>
+</div>
+  <div class="pgrid" id="grid-f"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
 </div>
 
 <div class="cbar">
@@ -258,10 +252,9 @@ const PIXEL    = '941013868540136';
 
 // روابط الشيتات
 const SH = {
-  n:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRNP6X6dAlq210UcSR4_fX7mroSjdYmA_iTpoW86Zn59l5gNm-ePy4l5OM9REi_bXuscb-eJeFYAUeT/pub?gid=0&single=true&output=csv',
-  r:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTcWvXgpmPtvWvPQmWquGhNfSmT2P2NrdMDk_llsMAZiFCFJ22DFicfd_JkSC4GHB0Vk49pygMtIvK9/pub?gid=0&single=true&output=csv',
-  fn: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvnkYOH5bwhjFkA5xZVIipL9Z8CHwY3rllh7vxlj8G-uU9k-u-HpwbDn2hV6G10nKYld1yRhmEQ_0_/pub?gid=0&single=true&output=csv',
-  fm: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSI0_xbyrPJwiVWQTdBp0uPOLLQ1sscgvZCu_EDHvpB0ZE4cpPV0nSOMCYxtq5QTE7MOll6-pznvPMN/pub?gid=0&single=true&output=csv'
+  n: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRNP6X6dAlq210UcSR4_fX7mroSjdYmA_iTpoW86Zn59l5gNm-ePy4l5OM9REi_bXuscb-eJeFYAUeT/pub?gid=0&single=true&output=csv',
+  r: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTcWvXgpmPtvWvPQmWquGhNfSmT2P2NrdMDk_llsMAZiFCFJ22DFicfd_JkSC4GHB0Vk49pygMtIvK9/pub?gid=0&single=true&output=csv',
+  f: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvnkYOH5bwhjFkA5xZVIipL9Z8CHwY3rllh7vxlj8G-uU9k-u-HpwbDn2hV6G10nKYld1yRhmEQ_0_/pub?gid=0&single=true&output=csv'
 };
 // proxy لتجاوز CORS عند فتح الملف محلياً
 const PROXY = 'https://api.allorigins.win/raw?url=';
@@ -269,8 +262,8 @@ const PROXY = 'https://api.allorigins.win/raw?url=';
 const PRICES = {2:1900,3:2600,4:3100,5:3600,6:4100,7:4800,8:5300};
 
 // ===== STATE =====
-let DB  = {n:[],r:[],fn:[],fm:[]};
-let SEL = {n:{},r:{},fn:{},fm:{}};
+let DB  = {n:[],r:[],f:[]};
+let SEL = {n:{},r:{},f:{}};
 let packQty=0, innerTab='n', cartOpen=false;
 let lpt=null, sending=false, toastTm=null;
 
@@ -294,11 +287,10 @@ function trackInitiateCheckout(){
 document.addEventListener('DOMContentLoaded', async ()=>{
   renderPackBtns();
   // تحميل الشيتات بالتوازي مع fallback تلقائي
-  await Promise.all(['n','r','fn','fm'].map(sec=>loadSheet(sec)));
+  await Promise.all(['n','r','f'].map(sec=>loadSheet(sec)));
   renderGrid('n');
   renderGrid('r');
-  renderGrid('fn');
-  renderGrid('fm');
+  renderGrid('f');
   // تشغيل lazy loading بعد رسم الـ grids
   initLazyLoad();
   // Pixel: ViewContent
@@ -358,10 +350,9 @@ function parseCSV(csv, sec) {
 }
 
 function useFallback(sec) {
-  if(sec==='n')  DB.n =['Delina','Miss Dior','Kayali','La Vie','Chloe','Flowerbomb','Idole','Paradox'].map(n=>mk(n,'n',0));
-  if(sec==='r')  DB.r =['Bleu Chanel','Sauvage','Acqua Di Gio','Boss','Invictus','One Million','Y YSL','Dior Homme'].map(n=>mk(n,'r',0));
-  if(sec==='fn') DB.fn=[['Oud Rose',900],['Amber Elixir',1200],['Rose Intense',1500],['Musk Lady',1000],['Vanilla Noir',1350],['Iris Royale',1800]].map(([n,p])=>mk(n,'fn',p));
-  if(sec==='fm') DB.fm=[['Oud Royal',950],['Amber Wood',1300],['Cedar Noir',1600],['Musk Homme',1050],['Vanilla Homme',1400],['Leather Royale',1900]].map(([n,p])=>mk(n,'fm',p));
+  if(sec==='n') DB.n=['Delina','Miss Dior','Kayali','La Vie','Chloe','Flowerbomb','Idole','Paradox'].map(n=>mk(n,'n',0));
+  if(sec==='r') DB.r=['Bleu Chanel','Sauvage','Acqua Di Gio','Boss','Invictus','One Million','Y YSL','Dior Homme'].map(n=>mk(n,'r',0));
+  if(sec==='f') DB.f=[['Oud Royal',900],['Amber',1200],['Rose',1500],['Musk',1000],['Vanilla',1350],['Noir',1800]].map(([n,p])=>mk(n,'f',p));
 }
 function mk(n,s,p){return {id:n+'__'+s,name:n,img:'',price:p,sec:s};}
 
@@ -396,13 +387,6 @@ function switchInner(tab){
   document.getElementById('grid-n').style.display=tab==='n'?'grid':'none';
   document.getElementById('grid-r').style.display=tab==='r'?'grid':'none';
 }
-function switchMimaza(tab){
-  document.getElementById('it-fn').className='it'+(tab==='fn'?' ib':'');
-  document.getElementById('it-fm').className='it'+(tab==='fm'?' ip':'');
-  document.getElementById('grid-fn').style.display=tab==='fn'?'grid':'none';
-  document.getElementById('grid-fm').style.display=tab==='fm'?'grid':'none';
-}
-
 function switchTab(tab){
   ['pack','fardi'].forEach(t=>{
     document.getElementById('sec-'+t).classList.remove('show');
@@ -419,7 +403,7 @@ function renderGrid(sec){
   DB[sec].forEach(p=>{
     const card=document.createElement('div');
     card.className='pc'; card.id='card__'+p.id;
-    const qcls=(sec==='r')?'qbp':(sec==='fn'||sec==='fm')?'qbg':'qbb';
+    const qcls=sec==='r'?'qbp':sec==='f'?'qbg':'qbb';
     card.innerHTML=`
       <div class="qb ${qcls}" id="qb__${p.id}">1</div>
       <button class="del-x" id="dx__${p.id}" title="حذف" aria-label="حذف ${p.name}">✕</button>
@@ -473,27 +457,21 @@ function initLazyLoad(){
 
   document.querySelectorAll('img[data-src]').forEach(img=>imgObserver.observe(img));
 }
-// تسجيل الصور الجديدة في الـ observer
-function observeNewImgs(gridId){
-  if(imgObserver){
-    document.querySelectorAll('#'+gridId+' img[data-src]').forEach(img=>imgObserver.observe(img));
-  } else {
-    document.querySelectorAll('#'+gridId+' img[data-src]').forEach(img=>{img.src=img.dataset.src;delete img.dataset.src;});
-  }
-}
 
 // ===== ADD / REMOVE =====
-function isMimaza(sec){return sec==='fn'||sec==='fm';}
-
 function handleAdd(p,sec){
-  if(isMimaza(sec)){
-    SEL[sec][p.id]=(SEL[sec][p.id]||0)+1;
+  if(sec==='f'){
+    SEL.f[p.id]=(SEL.f[p.id]||0)+1;
     updateFN(); toast('✓ '+p.name,'ok');
     refreshCard(p.id,sec); updateCnt('f'); updateCart();
+    // Pixel: AddToCart
     px('AddToCart',{
-      content_ids:[p.id],content_name:p.name,
-      content_type:'product',content_category:sec==='fn'?'مميزة نسائي':'مميزة رجالي',
-      currency:'DZD',value:p.price
+      content_ids: [p.id],
+      content_name: p.name,
+      content_type: 'product',
+      content_category: 'fardi',
+      currency: 'DZD',
+      value: p.price
     });
     return;
   }
@@ -519,7 +497,7 @@ function handleRemove(p,sec){
   if(SEL[sec][p.id]<=0)delete SEL[sec][p.id];
   toast('🗑️ '+p.name,'in');
   refreshCard(p.id,sec);
-  if(!isMimaza(sec)){updateProg();updateCnt('n');}
+  if(sec!=='f'){updateProg();updateCnt('n');}
   else{updateFN();updateCnt('f');}
   updateCart();
 }
@@ -527,7 +505,7 @@ function handleRemove(p,sec){
 function removeFromCart(id,sec){
   delete SEL[sec][id];
   refreshCard(id,sec);
-  if(!isMimaza(sec)){updateProg();updateCnt('n');}
+  if(sec!=='f'){updateProg();updateCnt('n');}
   else{updateFN();updateCnt('f');}
   updateCart(); renderCartItems();
 }
@@ -538,26 +516,24 @@ function refreshCard(id,sec){
   const delx=document.getElementById('dx__'+id);
   if(!card||!badge)return;
   const qty=SEL[sec][id]||0;
-  const sc=sec==='r'?'sp':isMimaza(sec)?'sg':'sb';
+  const sc=sec==='r'?'sp':sec==='f'?'sg':'sb';
   ['sb','sp','sg'].forEach(c=>card.classList.remove(c));
   if(qty>0)card.classList.add(sc);
   if(delx)delx.classList.toggle('show',qty>0);
   badge.textContent=qty; badge.classList.toggle('show',qty>0);
 }
 
-function refreshAll(){['n','r','fn','fm'].forEach(s=>DB[s].forEach(p=>refreshCard(p.id,s)));}
+function refreshAll(){['n','r','f'].forEach(s=>DB[s].forEach(p=>refreshCard(p.id,s)));}
 
 // ===== FARDI NOTE =====
 function updateFN(){
-  const pt=packTotal(), mt=mimazaTotal();
-  const hasDisc=pt>0||mt>=2;
+  const pt=packTotal();
   const el=document.getElementById('fn');
-  if(!el)return;
-  if(hasDisc){
-    el.innerHTML='✨ خصم 20% مفعّل!'+(pt>0?' (لديك باك)':' (اخترت '+mt+' عطور مميزة)');
-    el.style.cssText='background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:var(--rs);padding:10px;margin-bottom:10px;font-size:12px;text-align:center;';
+  if(pt>0){
+    el.textContent='✨ خصم 20% مفعّل — لديك باك في سلتك!';
+    el.style.cssText='background:#dcfce7;border-color:#86efac;color:#166534;';
   } else {
-    el.innerHTML='👑 العطور المميزة — خصم 20% على كل عطر عند شراء 2 أو أكثر<br><span style="font-size:11px;opacity:.8;">مثال: عطر بـ 1500 دج يصبح 1200 دج عند شراء عطرين فأكثر 🎁</span>';
+    el.textContent='👑 العطور الفردية — اشترِ مع باك واحصل على خصم 20%';
     el.style.cssText='';
   }
 }
@@ -577,34 +553,17 @@ function updateProg(){
 }
 
 function updateCnt(sec){
-  if(sec==='f'||isMimaza(sec)){
-    const total=Object.values(SEL.fn).reduce((a,b)=>a+b,0)+Object.values(SEL.fm).reduce((a,b)=>a+b,0);
-    document.getElementById('cnt-fardi').textContent=total;
-  } else {
-    document.getElementById('cnt-pack').textContent=packTotal();
-  }
+  if(sec==='f') document.getElementById('cnt-fardi').textContent=Object.values(SEL.f).reduce((a,b)=>a+b,0);
+  else document.getElementById('cnt-pack').textContent=packTotal();
 }
 
 // ===== PRICE =====
-function mimazaTotal(){
-  return Object.values(SEL.fn).reduce((a,b)=>a+b,0)
-       + Object.values(SEL.fm).reduce((a,b)=>a+b,0);
-}
-
 function calcFP(){
-  // خصم 20% إذا: عنده باك أو اشترى 2+ عطر مميز
-  const hasPack = packTotal()>0;
-  const mTotal  = mimazaTotal();
-  const hasDisc = hasPack || mTotal>=2;
-
-  let sum=0;
-  ['fn','fm'].forEach(sec=>{
-    Object.entries(SEL[sec]).forEach(([id,qty])=>{
-      const p=DB[sec].find(x=>x.id===id);
-      if(p) sum+=(hasDisc?Math.round(p.price*.8):p.price)*qty;
-    });
-  });
-  return sum;
+  const hp=packTotal()>0;
+  return Object.entries(SEL.f).reduce((s,[id,qty])=>{
+    const p=DB.f.find(x=>x.id===id);
+    return s+(p?(hp?Math.round(p.price*.8):p.price)*qty:0);
+  },0);
 }
 function calcPP(){const pt=packTotal(); return pt>=2?(PRICES[packQty]||0):pt===1?700:0;}
 function calcTotal(del=0){return calcPP()+calcFP()+parseInt(del||0);}
@@ -621,10 +580,10 @@ function updateCart(){
 }
 
 function getSub(){
-  const pt=packTotal();
+  const pt=packTotal(), ft=Object.values(SEL.f).reduce((a,b)=>a+b,0);
   const parts=[];
   if(pt)parts.push(pt+' من الباك');
-  if(ft)parts.push(ft+' مميزة');
+  if(ft)parts.push(ft+' فردي');
   return parts.join(' | ');
 }
 
@@ -645,15 +604,11 @@ function renderCartItems(){
       const p=DB[sec].find(x=>x.id===id); if(!p)return;
       const qty=SEL[sec][id];
       let pr='';
-      if(isMimaza(sec)){
-        const hasDisc2=packTotal()>0||mimazaTotal()>=2;
-        const up=hasDisc2?Math.round(p.price*.8):p.price;
-        pr=up*qty+' دج'+(hasDisc2?' (-20%)':'');
-      }
+      if(sec==='f'){const up=hp?Math.round(p.price*.8):p.price; pr=up*qty+' دج'+(hp?' (-20%)':'');}
       html+='<div class="ci-row"><button class="ci-del" data-id="'+id+'" data-sec="'+sec+'">✕</button><span class="ci-nm">'+p.name+'</span><span class="ci-qty">×'+qty+'</span><span class="ci-pr">'+pr+'</span></div>';
     });
   };
-  addS('n','🌸 نسائي'); addS('r','💼 رجالي'); addS('fn','🌸 نسائية مميزة'); addS('fm','💼 رجالية مميزة');
+  addS('n','🌸 نسائي'); addS('r','💼 رجالي'); addS('f','👑 فردي');
   el.innerHTML=html||'<div style="text-align:center;color:var(--gy);font-size:12px;padding:8px">السلة فارغة</div>';
   el.querySelectorAll('.ci-del').forEach(btn=>{
     btn.addEventListener('click',function(e){e.stopPropagation();removeFromCart(this.dataset.id,this.dataset.sec);});
@@ -661,7 +616,7 @@ function renderCartItems(){
 }
 
 function doReset(){
-  SEL={n:{},r:{},fn:{},fm:{}}; packQty=0;
+  SEL={n:{},r:{},f:{}}; packQty=0;
   document.querySelectorAll('.pb').forEach(b=>b.classList.remove('sel'));
   refreshAll(); updateProg(); updateCnt('n'); updateCnt('f'); updateFN(); updateCart();
   toast('تم إعادة التعيين','in');
@@ -686,17 +641,16 @@ function updateOS(){
   const pp=calcPP(), fp=calcFP(), hp=packTotal()>0;
   let rows='';
   if(pp)rows+='<div class="os-r"><span>🎁 الباك ('+packTotal()+' عطور)</span><span>'+pp+' دج</span></div>';
-  const mt2=mimazaTotal(), hasDisc2=hp||mt2>=2;
-  if(fp)rows+='<div class="os-r"><span>👑 مميزة'+(hasDisc2?' (خصم 20%)':'')+'</span><span>'+fp+' دج</span></div>';
+  if(fp)rows+='<div class="os-r"><span>👑 فردي'+(hp?' (خصم 20%)':'')+'</span><span>'+fp+' دج</span></div>';
   if(del)rows+='<div class="os-r"><span>🚚 التوصيل</span><span>'+del+' دج</span></div>';
   rows+='<div class="os-r"><span>💰 الإجمالي</span><span>'+(pp+fp+del)+' دج</span></div>';
   document.getElementById('os-box').innerHTML='<div class="os-t">ملخص طلبك</div>'+rows;
 }
 
-function getTI(){return packTotal()+Object.values(SEL.fn).reduce((a,b)=>a+b,0)+Object.values(SEL.fm).reduce((a,b)=>a+b,0);}
+function getTI(){return packTotal()+Object.values(SEL.f).reduce((a,b)=>a+b,0);}
 function getCIDs(){
   const ids=[];
-  ['n','r','fn','fm'].forEach(s=>Object.keys(SEL[s]).filter(k=>SEL[s][k]>0).forEach(id=>{
+  ['n','r','f'].forEach(s=>Object.keys(SEL[s]).filter(k=>SEL[s][k]>0).forEach(id=>{
     const p=DB[s].find(x=>x.id===id); if(p)ids.push(p.name);
   }));
   return ids;
@@ -750,7 +704,7 @@ async function submitOrder(){
 
   // جمع أسماء العطور
   const names=[];
-  ['n','r','fn','fm'].forEach(sec=>Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0).forEach(id=>{
+  ['n','r','f'].forEach(sec=>Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0).forEach(id=>{
     const p=DB[sec].find(x=>x.id===id); const qty=SEL[sec][id];
     if(p)for(let i=0;i<qty;i++)names.push(p.name);
   }));
@@ -770,8 +724,7 @@ async function submitOrder(){
     'تفاصيل الطلب:'
   ];
   if(pp) lines.push('الباقة: '+pt+' عطور بـ '+pp+' دج');
-  const mt3=mimazaTotal(), hasD=hp||mt3>=2;
-  if(fp) lines.push('العطور المميزة: '+fp+' دج'+(hasD?' (خصم 20%)':''));
+  if(fp) lines.push('العطور الفردية: '+fp+' دج'+(hp?' (خصم 20%)':''));
   lines.push('التوصيل: '+delLbl);
   lines.push('السعر الاجمالي: '+total+' دج');
 
@@ -837,6 +790,5 @@ function toast(msg,type='in'){
   clearTimeout(toastTm); toastTm=setTimeout(()=>el.classList.remove('show'),2400);
 }
 </script>
-
 </body>
 </html>
