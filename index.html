@@ -428,7 +428,7 @@ function renderGrid(sec){
         ${p.img?`<img data-src="${p.img}" alt="${p.name}" decoding="async" onerror="this.style.opacity='0';this.style.zIndex='-1'">`:''}
       </div>
       <div class="pn">${p.name}</div>
-      ${sec==='f'?`<div class="pp">${p.price} دج</div>`:''}
+      ${(sec==='fn'||sec==='fm')?`<div class="pp">${p.price} دج</div>`:''}
     `;
     // ضغطة عادية على الكارد = إضافة
     card.addEventListener('click',(e)=>{
