@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>متجر العطور الفاخرة</title>
 <!-- META PIXEL -->
-<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','941013868540136');fbq('track','PageView');</script>
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','941013868540136');fbq('track','PageView');
+</script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=941013868540136&ev=PageView&noscript=1"/></noscript>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -145,7 +147,7 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;color:#1f2937;padding-bot
   <p>اختر عطورك وأكمل طلبك بسهولة</p>
 </div>
 
-<a class="wa" href="https://wa.me/213796161396" target="_blank" onclick="px('Contact',{content_name:'whatsapp_support',content_category:'support'});pxC('WhatsAppClick',{content_name:'whatsapp_button',currency:'DZD'})">
+<a class="wa" href="https://wa.me/213796161396" target="_blank" id="wa-link">
   <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
   تواصل معنا عبر واتساب
 </a>
@@ -273,75 +275,163 @@ let SEL = {n:{},r:{},fn:{},fm:{}};
 let packQty=0, innerTab='n', cartOpen=false;
 let lpt=null, sending=false, toastTm=null;
 
-// ===== PIXEL =====
-// ===== CAPI - Conversions API لحل مشكلة iOS Safari =====
-const CAPI_TOKEN = 'EAAaFQnA1VRYBRedZBocMEYHy23VCBxstreZA4G7VFuM5lnYXhQ2r5XKyWkDLV5KsQgzuyHYIHcC9SZAx1CZB6psZAHmYTyA5bXCPQlVeiuGFLGymU8eJZB60EXTxhCZAA6yEZA53PIeiP6qa5DDZCDS0u63IWjbKZB7Oo3uXo95ULhlviZAkXNYLQ3wrqZBjeDdcfeFStQZDZD';
-const CAPI_PIXEL = '941013868540136';
-const CAPI_API   = 'https://graph.facebook.com/v19.0/'+CAPI_PIXEL+'/events?access_token='+CAPI_TOKEN;
+// ============== نظام التتبع المركزي ==============
+const WORKER_URL = 'https://meta-capi.bamh1804.workers.dev';
 
-// hash SHA256 للـ Advanced Matching
-async function sha256(str){
-  if(!str)return'';
-  try{
-    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str.toLowerCase().trim()));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }catch(e){return'';}
+// إنشاء أو استرجاع external_id
+function getExternalId() {
+  let extId = localStorage.getItem('_ext_id');
+  if (!extId) {
+    extId = 'ext_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('_ext_id', extId);
+  }
+  return extId;
 }
 
-// CAPI: يرسل الحدث مباشرة من المتصفح لـ Meta Graph API
-// يعمل مع iOS Safari حتى مع ITP
-function capiSend(eventName, customData={}, userData={}, eventId=''){
-  try{
-    if(!eventId) eventId = eventName+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+// استخراج fbp و fbc من الكوكيز
+function getFbCookies() {
+  const cookies = document.cookie.split(';');
+  let fbp = '', fbc = '';
+  cookies.forEach(c => {
+    const parts = c.trim().split('=');
+    if (parts.length >= 2) {
+      const key = parts[0].trim();
+      const val = parts.slice(1).join('=').trim();
+      if (key === '_fbp') fbp = val;
+      if (key === '_fbc') fbc = val;
+    }
+  });
+  return { fbp, fbc };
+}
+
+// الحصول على بيانات المستخدم الحالية من الفورم
+function getCurrentUserData() {
+  const name = document.getElementById('f-name')?.value?.trim() || '';
+  const phone = document.getElementById('f-phone')?.value?.trim() || '';
+  const nameParts = name.split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  
+  return {
+    fn: firstName,
+    ln: lastName,
+    ph: phone.replace(/^0/, '213')
+  };
+}
+
+// توليد event_id فريد
+function generateEventId(eventName) {
+  return eventName + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * الدالة المركزية لإرسال الأحداث
+ */
+function trackEvent(eventName, customData = {}, userDataOverride = {}) {
+  const eventId = generateEventId(eventName);
+  const extId = getExternalId();
+  const { fbp, fbc } = getFbCookies();
+  const currentUser = getCurrentUserData();
+  
+  // تجهيز user_data
+  const userData = {
+    external_id: extId,
+    client_user_agent: navigator.userAgent,
+    ...(fbp && { fbp }),
+    ...(fbc && { fbc }),
+    ...(currentUser.fn && { fn: currentUser.fn }),
+    ...(currentUser.ln && { ln: currentUser.ln }),
+    ...(currentUser.ph && { ph: currentUser.ph }),
+    ...userDataOverride
+  };
+  
+  // تجهيز custom_data
+  const fullCustomData = {
+    currency: 'DZD',
+    event_source_url: window.location.href,
+    ...customData
+  };
+  
+  // 1. إرسال عبر Facebook Pixel (Browser)
+  try {
+    fbq('track', eventName, fullCustomData, { eventID: eventId });
+  } catch (e) {
+    console.warn('FB Pixel error:', e);
+  }
+  
+  // 2. إرسال عبر Conversions API (Worker)
+  try {
     const payload = {
-      data:[{
+      event_name: eventName,
+      event_id: eventId,
+      event_time: Math.floor(Date.now() / 1000),
+      action_source: 'website',
+      event_source_url: window.location.href,
+      user_data: userData,
+      custom_data: fullCustomData
+    };
+    
+    fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3000)
+    }).catch(e => console.warn('CAPI Worker error:', e));
+  } catch (e) {
+    console.warn('CAPI send error:', e);
+  }
+  
+  return eventId;
+}
+
+// أحداث مخصصة (Custom Events)
+function trackCustom(eventName, customData = {}, userDataOverride = {}) {
+  const eventId = generateEventId(eventName);
+  const extId = getExternalId();
+  const { fbp, fbc } = getFbCookies();
+  const currentUser = getCurrentUserData();
+  
+  const userData = {
+    external_id: extId,
+    client_user_agent: navigator.userAgent,
+    ...(fbp && { fbp }),
+    ...(fbc && { fbc }),
+    ...(currentUser.fn && { fn: currentUser.fn }),
+    ...(currentUser.ln && { ln: currentUser.ln }),
+    ...(currentUser.ph && { ph: currentUser.ph }),
+    ...userDataOverride
+  };
+  
+  const fullCustomData = {
+    currency: 'DZD',
+    event_source_url: window.location.href,
+    ...customData
+  };
+  
+  // Pixel
+  try {
+    fbq('trackCustom', eventName, fullCustomData, { eventID: eventId });
+  } catch (e) {}
+  
+  // CAPI via Worker
+  try {
+    fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         event_name: eventName,
-        event_time: Math.floor(Date.now()/1000),
         event_id: eventId,
+        event_time: Math.floor(Date.now() / 1000),
         action_source: 'website',
         event_source_url: window.location.href,
-        user_data: {
-          client_user_agent: navigator.userAgent||'',
-          ...userData
-        },
-        custom_data: {
-          currency:'DZD',
-          ...customData
-        }
-      }]
-    };
-    // إرسال في الخلفية بدون await حتى لا يعيق الصفحة
-    fetch(CAPI_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    }).catch(()=>{});
-    return eventId;
-  }catch(e){ return ''; }
-}
-
-// إرسال مزدوج مع event_id موحد بين Browser Pixel و CAPI
-function px(ev,p={}){
-  const eid = ev+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  try{fbq('track',ev,{...p, eventID:eid});}catch(e){}
-  capiSend(ev,p,{},eid);
-}
-function pxC(ev,p={}){
-  const eid = ev+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  try{fbq('trackCustom',ev,{...p, eventID:eid});}catch(e){}
-  capiSend(ev,p,{},eid);
-}
-let _icFired=false;
-function trackInitiateCheckout(){
-  if(_icFired)return; _icFired=true;
-  const _t=calcTotal();
-  px('InitiateCheckout',{
-    value: _t,
-    currency: 'DZD',
-    num_items: getTI(),
-    content_ids: getCIDs(),
-    content_type: 'product'
-  });
+        user_data: userData,
+        custom_data: fullCustomData
+      }),
+      signal: AbortSignal.timeout(3000)
+    }).catch(() => {});
+  } catch (e) {}
+  
+  return eventId;
 }
 
 // ===== BOOT =====
@@ -355,13 +445,30 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   renderGrid('fm');
   // تشغيل lazy loading بعد رسم الـ grids
   initLazyLoad();
-  // Pixel: ViewContent
-  px('ViewContent',{
-    content_name: 'perfume_store',
+  
+  // ✅ PageView مع user_data كامل
+  trackEvent('PageView', {
+    content_name: 'perfume_store_homepage',
     content_category: 'perfumes',
-    content_type: 'product',
-    currency: 'DZD',
-    value: 0
+    content_type: 'website'
+  });
+  
+  // ✅ ViewContent للصفحة الرئيسية (بعد التحميل)
+  setTimeout(() => {
+    trackEvent('ViewContent', {
+      content_name: 'perfume_store',
+      content_category: 'perfumes',
+      content_type: 'product',
+      content_ids: ['store_view']
+    });
+  }, 1000);
+  
+  // ✅ تتبع النقر على واتساب
+  document.getElementById('wa-link')?.addEventListener('click', () => {
+    trackCustom('WhatsAppClick', {
+      content_name: 'whatsapp_button',
+      content_category: 'support'
+    });
   });
 });
 
@@ -393,7 +500,6 @@ function parseCSV(csv, sec) {
   const heads = lines[0].split(',').map(h=>h.trim().replace(/^\uFEFF/,'').replace(/"/g,''));
   let count = 0;
   lines.slice(1).forEach(line=>{
-    // دعم CSV مع أو بدون quotes
     const vals = line.match(/(".*?"|[^,]+)/g)||line.split(',');
     const clean = vals.map(v=>v.trim().replace(/^"|"$/g,''));
     const row={};
@@ -438,8 +544,11 @@ function selectPack(q){
   document.querySelectorAll('.pb').forEach(b=>b.classList.remove('sel'));
   document.getElementById('pb'+q).classList.add('sel');
   updateProg(); refreshAll(); updateCart();
-  // Pixel: حدث مخصص LeadType عند اختيار الباك
-  pxC('LeadType',{pack_size:q,pack_price:PRICES[q]||0,currency:'DZD'});
+  // ✅ تتبع اختيار الباك
+  trackCustom('LeadType', {
+    pack_size: q,
+    pack_price: PRICES[q] || 0
+  });
 }
 
 // ===== TABS =====
@@ -486,7 +595,7 @@ function renderGrid(sec){
     `;
     // ضغطة عادية على الكارد = إضافة
     card.addEventListener('click',(e)=>{
-      if(e.target.closest('.del-x'))return; // تجاهل الضغطة إذا كانت على X
+      if(e.target.closest('.del-x'))return;
       handleAdd(p,sec);
     });
     // زر X = حذف مباشر
@@ -502,11 +611,10 @@ function renderGrid(sec){
   });
 }
 
-// ===== LAZY LOADING (IntersectionObserver) =====
+// ===== LAZY LOADING =====
 let imgObserver = null;
 function initLazyLoad(){
   if(!('IntersectionObserver' in window)){
-    // fallback: تحميل كل الصور مباشرة
     document.querySelectorAll('img[data-src]').forEach(img=>{
       img.src=img.dataset.src; delete img.dataset.src;
     });
@@ -527,14 +635,6 @@ function initLazyLoad(){
 
   document.querySelectorAll('img[data-src]').forEach(img=>imgObserver.observe(img));
 }
-// تسجيل الصور الجديدة في الـ observer
-function observeNewImgs(gridId){
-  if(imgObserver){
-    document.querySelectorAll('#'+gridId+' img[data-src]').forEach(img=>imgObserver.observe(img));
-  } else {
-    document.querySelectorAll('#'+gridId+' img[data-src]').forEach(img=>{img.src=img.dataset.src;delete img.dataset.src;});
-  }
-}
 
 // ===== ADD / REMOVE =====
 function isMimaza(sec){return sec==='fn'||sec==='fm';}
@@ -544,10 +644,13 @@ function handleAdd(p,sec){
     SEL[sec][p.id]=(SEL[sec][p.id]||0)+1;
     updateFN(); toast('✓ '+p.name,'ok');
     refreshCard(p.id,sec); updateCnt('f'); updateCart();
-    px('AddToCart',{
-      content_ids:[p.id],content_name:p.name,
-      content_type:'product',content_category:sec==='fn'?'مميزة نسائي':'مميزة رجالي',
-      currency:'DZD',value:p.price
+    // ✅ AddToCart مع user_data
+    trackEvent('AddToCart', {
+      content_ids: [p.id],
+      content_name: p.name,
+      content_type: 'product',
+      content_category: sec==='fn'?'مميزة نسائي':'مميزة رجالي',
+      value: p.price
     });
     return;
   }
@@ -556,13 +659,12 @@ function handleAdd(p,sec){
   SEL[sec][p.id]=(SEL[sec][p.id]||0)+1;
   toast('✓ '+p.name,'ok');
   refreshCard(p.id,sec); updateProg(); updateCnt('n'); updateCart();
-  // Pixel: AddToCart
-  px('AddToCart',{
+  // ✅ AddToCart مع user_data
+  trackEvent('AddToCart', {
     content_ids: [p.id],
     content_name: p.name,
     content_type: 'product',
     content_category: sec==='n'?'نسائي':'رجالي',
-    currency: 'DZD',
     value: PRICES[packQty]||0
   });
 }
@@ -648,7 +750,6 @@ function mimazaTotal(){
 }
 
 function calcFP(){
-  // خصم 20% إذا: عنده باك أو اشترى 2+ عطر مميز
   const hasPack = packTotal()>0;
   const mTotal  = mimazaTotal();
   const hasDisc = hasPack || mTotal>=2;
@@ -692,8 +793,8 @@ function toggleCart(){
 }
 
 function renderCartItems(){
-  const el=document.getElementById('citems'); let html='';
-  const hp=packTotal()>0;
+  const el=document.getElementById('citems');
+  let html='';
   const addS=(sec,lbl)=>{
     const keys=Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0);
     if(!keys.length)return;
@@ -707,14 +808,9 @@ function renderCartItems(){
         const up=hasDisc2?Math.round(p.price*.8):p.price;
         pr=up*qty+' دج'+(hasDisc2?' (-20%)':'');
       }
-      // إضافة سعر الباك للعرض فقط (تقريبي)
-      let displayPr = pr;
-      if(!displayPr && sec==='n' && packQty) displayPr='';
-      if(!displayPr && sec==='r' && packQty) displayPr='';
-      html+='<div class="ci-row"><button class="ci-del" data-id="'+id+'" data-sec="'+sec+'">✕</button><span class="ci-nm">'+p.name+'</span><span class="ci-qty">×'+qty+'</span><span class="ci-pr">'+displayPr+'</span></div>';
+      html+='<div class="ci-row"><button class="ci-del" data-id="'+id+'" data-sec="'+sec+'">✕</button><span class="ci-nm">'+p.name+'</span><span class="ci-qty">×'+qty+'</span><span class="ci-pr">'+pr+'</span></div>';
     });
   };
-  // إظهار سعر الباك في رأس السلة
   const pt2=packTotal(), pp2=calcPP();
   if(pt2>0){
     html='<div style="font-size:11px;font-weight:700;color:var(--gy);margin:6px 0 3px">🎁 الباك — '+pp2+' دج</div>'+html;
@@ -734,15 +830,15 @@ function doReset(){
 }
 
 // ===== CHECKOUT =====
+let _icFired=false;
 function openCO(){
   const t=calcTotal(); if(!t){toast('السلة فارغة','wa');return;}
   const pt=packTotal();
   if(packQty&&pt>0&&pt<packQty){toast('أكمل الباك! اخترت '+pt+' من '+packQty,'wa');return;}
-  // InitiateCheckout يُرسل عند أول focus على الحقول
   document.getElementById('fv').style.display='block';
   document.getElementById('sv').classList.remove('show');
   document.getElementById('ov-co').classList.add('open');
-  _icFired=false; // إعادة ضبط لكل فتح جديد
+  _icFired=false;
   updateOS();
 }
 function closeCO(){document.getElementById('ov-co').classList.remove('open');}
@@ -768,6 +864,19 @@ function getCIDs(){
   return ids;
 }
 
+// دالة InitiateCheckout
+function trackInitiateCheckout(){
+  if(_icFired)return; _icFired=true;
+  const _t=calcTotal();
+  trackEvent('InitiateCheckout', {
+    value: _t,
+    num_items: getTI(),
+    content_ids: getCIDs(),
+    content_type: 'product',
+    content_name: 'perfume_checkout'
+  });
+}
+
 // ===== CONFIRM =====
 function openConf(){
   const name=document.getElementById('f-name').value.trim();
@@ -788,15 +897,18 @@ function openConf(){
   chk('f-commune','e-commune');
   chk('f-del','e-del');
   if(!ok){toast('أكمل جميع الحقول','er');return;}
-  px('Lead',{
-    value: calcTotal(del),
-    currency: 'DZD',
+  
+  // ✅ Lead مع user_data
+  const totalWithDel = calcTotal(del);
+  trackEvent('Lead', {
+    value: totalWithDel,
     content_name: 'order_form_completed',
     content_type: 'product',
     num_items: getTI()
   });
-  const t=calcTotal(del), dlbl=del==='500'?'للمكتب 500 دج':'للمنزل 700 دج';
-  document.getElementById('conf-msg').textContent='الإجمالي: '+t+' دج — '+dlbl;
+  
+  const dlbl=del==='500'?'للمكتب 500 دج':'للمنزل 700 دج';
+  document.getElementById('conf-msg').textContent='الإجمالي: '+totalWithDel+' دج — '+dlbl;
   document.getElementById('cov').classList.add('open');
 }
 function closeConf(){document.getElementById('cov').classList.remove('open');}
@@ -814,7 +926,16 @@ async function submitOrder(){
   const total=calcTotal(del);
   const pt=packTotal(), hp=pt>0;
 
-  // جمع أسماء العطور
+  // ✅ Purchase مع user_data كامل
+  trackEvent('Purchase', {
+    value: total,
+    num_items: getTI(),
+    content_ids: getCIDs(),
+    content_type: 'product',
+    content_name: 'perfume_order'
+  });
+
+  // جمع أسماء العطور للتليغرام
   const names=[];
   ['n','r','fn','fm'].forEach(sec=>Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0).forEach(id=>{
     const p=DB[sec].find(x=>x.id===id); const qty=SEL[sec][id];
@@ -853,30 +974,7 @@ async function submitOrder(){
     });
     const d = await r.json();
     if(!d.ok) throw new Error(d.description||'فشل');
-    // Purchase: event_id موحد = Meta تعدّه مرة واحدة فقط
-    const pEid = 'Purchase_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-    const pData = {
-      value:total, currency:'DZD',
-      num_items:getTI(), content_ids:getCIDs(),
-      content_type:'product', content_name:'perfume_order'
-    };
-
-    // 1. Browser Pixel (Chrome / Android / Desktop)
-    try{
-      fbq('track','Purchase',{...pData, eventID:pEid});
-    }catch(e){}
-
-    // 2. CAPI بنفس event_id + Advanced Matching SHA256 (iOS / Safari / ITP)
-    const [_ph,_fn2,_ln2] = await Promise.all([
-      sha256(phone.replace(/^0/,'213')),
-      sha256(name.split(' ')[0]||''),
-      sha256(name.split(' ').slice(1).join(' ')||'')
-    ]);
-    capiSend('Purchase', pData, {
-      ph:_ph, fn:_fn2, ln:_ln2,
-      client_user_agent: navigator.userAgent||''
-    }, pEid); // نفس pEid = Meta تعرف أنهما نفس الحدث ولا تعدّه مرتين
-
+    
     await new Promise(r=>setTimeout(r,400));
     showSucc();
   } catch(e){
@@ -906,5 +1004,6 @@ function toast(msg,type='in'){
   clearTimeout(toastTm); toastTm=setTimeout(()=>el.classList.remove('show'),2400);
 }
 </script>
+
 </body>
 </html>
