@@ -254,7 +254,7 @@ let sending=false, toastTm=null;
 
 // ============== نظام التتبع ==============
 const WORKER_URL = 'https://meta-capi.bamh1804.workers.dev';
-const PROXY_URL = 'https://script.google.com/macros/s/AKfycbyZt69ZLyE2tjDHMZnOr7g1cZCxw2o10q0Zz-M7HzJsHtvUJol_epXEb4uMWqIHAdd2Iw/exec';
+const PROXY_URL = '/.netlify/functions/track';
 
 function getExternalId() {
   const KEY = '_ext_id';
@@ -302,56 +302,24 @@ function generateEventId(eventName) {
   return eventName + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// ✅ الإرسال متعدد الطبقات
+// ✅ الإرسال عبر Netlify Function
 function sendToCAPI(payload) {
   const jsonData = JSON.stringify(payload);
-  let sent = false;
 
-  // الطريقة 1: XHR إلى Google Apps Script
+  // الطريقة 1: XHR إلى Netlify Function (نفس النطاق، لن يُحجب)
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', PROXY_URL, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.timeout = 5000;
-    xhr.onload = function() { if (xhr.status === 200) sent = true; };
     xhr.send(jsonData);
   } catch(e) {}
 
-  // الطريقة 2: sendBeacon بـ text/plain
+  // الطريقة 2: sendBeacon احتياطي
   setTimeout(function() {
-    if (!sent) {
-      const blob = new Blob([jsonData], { type: 'text/plain' });
-      try { navigator.sendBeacon(PROXY_URL, blob); sent = true; } catch(e) {}
-      try { navigator.sendBeacon(WORKER_URL, blob); sent = true; } catch(e) {}
-    }
+    const blob = new Blob([jsonData], { type: 'text/plain' });
+    try { navigator.sendBeacon(PROXY_URL, blob); } catch(e) {}
   }, 150);
-
-  // الطريقة 3: Image Pixel للأحداث المهمة
-  const importantEvents = ['Purchase', 'Lead', 'InitiateCheckout', 'AddToCart'];
-  if (importantEvents.includes(payload.event_name)) {
-    setTimeout(function() {
-      if (!sent) {
-        try {
-          const ed = encodeURIComponent;
-          const { fbp } = getFbCookies();
-          const extId = getExternalId();
-          const params = [
-            'id=941013868540136',
-            'ev=' + ed(payload.event_name),
-            'dl=' + ed(window.location.href),
-            'ts=' + Date.now(),
-            'cd[currency]=DZD',
-            'cd[value]=' + (payload.custom_data?.value || 0),
-            'eid=' + ed(payload.event_id || ''),
-            'fbp=' + ed(fbp),
-            'exid=' + ed(extId),
-            'noscript=0'
-          ].join('&');
-          new Image().src = 'https://www.facebook.com/tr?' + params;
-        } catch(e) {}
-      }
-    }, 500);
-  }
 }
 
 function trackEvent(eventName, customData = {}, userDataOverride = {}) {
@@ -797,7 +765,6 @@ async function submitOrder(){
   const total=calcTotal(del);
   const pt=packTotal(), hp=pt>0;
 
-  // Purchase أولاً
   trackEvent('Purchase', { value: total, num_items: getTI(), content_ids: getCIDs(), content_type: 'product', content_name: 'perfume_order' });
 
   const names=[];
