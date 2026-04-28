@@ -257,42 +257,59 @@ let sending=false, toastTm=null;
 
 // ============== نظام التتبع المتكامل ==============
 const WORKER_URL = 'https://meta-capi.bamh1804.workers.dev';
-const PROXY_URL = 'https://script.google.com/macros/s/AKfycbyZt69ZLyE2tjDHMZnOr7g1cZCxw2o10q0Zz-M7HzJsHtvUJol_epXEb4uMWqIHAdd2Iw/exec';
 
-// ✅ external_id مقاوم لجميع المتصفحات
+// ✅ الخطوة 1: external_id مقاوم لجميع المتصفحات
 function getExternalId() {
   const KEY = '_ext_id';
   let extId = null;
+  
   try { extId = localStorage.getItem(KEY); } catch(e) {}
-  if (!extId) { try { extId = sessionStorage.getItem(KEY); } catch(e) {} }
-  if (!extId) { try { const match = document.cookie.match(new RegExp(KEY + '=([^;]+)')); if (match) extId = match[1]; } catch(e) {} }
+  
+  if (!extId) {
+    try { extId = sessionStorage.getItem(KEY); } catch(e) {}
+  }
+  
+  if (!extId) {
+    try {
+      const match = document.cookie.match(new RegExp(KEY + '=([^;]+)'));
+      if (match) extId = match[1];
+    } catch(e) {}
+  }
+  
   if (!extId) {
     extId = 'ext_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     try { localStorage.setItem(KEY, extId); } catch(e) {}
     try { sessionStorage.setItem(KEY, extId); } catch(e) {}
-    try { document.cookie = KEY + '=' + extId + ';path=/;max-age=31536000;SameSite=Lax'; } catch(e) {}
+    try {
+      document.cookie = KEY + '=' + extId + ';path=/;max-age=31536000;SameSite=Lax';
+    } catch(e) {}
   }
+  
   return extId;
 }
 
-// ✅ استخراج fbclid من URL
+// ✅ الخطوة 3: استخراج fbclid من URL
 function getFbcFromUrl() {
   try {
     const params = new URLSearchParams(window.location.search);
     const fbclid = params.get('fbclid');
     if (fbclid) {
       const fbc = 'fb.1.' + Date.now() + '.' + fbclid;
-      try { document.cookie = '_fbc=' + fbc + ';path=/;max-age=7776000;SameSite=Lax'; } catch(e) {}
+      try {
+        document.cookie = '_fbc=' + fbc + ';path=/;max-age=7776000;SameSite=Lax';
+      } catch(e) {}
       return fbc;
     }
   } catch(e) {}
   return '';
 }
+
 const URL_FBC = getFbcFromUrl();
 
-// ✅ استخراج fbp و fbc مع fallback
+// استخراج fbp و fbc مع fallback
 function getFbCookies() {
   let fbp = '', fbc = '';
+  
   try {
     const cookies = document.cookie.split(';');
     cookies.forEach(c => {
@@ -305,57 +322,80 @@ function getFbCookies() {
       }
     });
   } catch(e) {}
+  
+  // إنشاء fbp محلي إذا لم يوجد
   if (!fbp) {
     fbp = 'fb.1.' + Date.now() + '.' + Math.random().toString(36).substr(2, 9);
-    try { document.cookie = '_fbp=' + fbp + ';path=/;max-age=7776000;SameSite=Lax'; } catch(e) {}
+    try {
+      document.cookie = '_fbp=' + fbp + ';path=/;max-age=7776000;SameSite=Lax';
+    } catch(e) {}
   }
+  
   if (!fbc && URL_FBC) fbc = URL_FBC;
+  
   return { fbp, fbc };
 }
 
-// ✅ بيانات المستخدم من الفورم
+// بيانات المستخدم من الفورم
 function getCurrentUserData() {
   const name = document.getElementById('f-name')?.value?.trim() || '';
   const phone = document.getElementById('f-phone')?.value?.trim() || '';
   const nameParts = name.split(' ');
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
-  return { fn: firstName, ln: lastName, ph: phone.replace(/^0/, '213') };
+  
+  return {
+    fn: firstName,
+    ln: lastName,
+    ph: phone.replace(/^0/, '213')
+  };
 }
 
-// ✅ توليد event_id فريد
+// توليد event_id فريد
 function generateEventId(eventName) {
   return eventName + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// ✅ الإرسال الآمن متعدد الطبقات
+// ✅ الخطوة 2: إرسال آمن مع fallback لـ sendBeacon
 function sendToCAPI(payload) {
-  const jsonData = JSON.stringify(payload);
+  const doFetch = (url, data) => {
+    try {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        keepalive: true
+      });
+    } catch(e) {
+      return Promise.reject(e);
+    }
+  };
 
-  // --- الطريقة 1: Google Apps Script عبر XHR (الأكثر توافقاً) ---
+  const doBeacon = (url, data) => {
+    try {
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      return navigator.sendBeacon(url, blob);
+    } catch(e) {
+      return false;
+    }
+  };
+
   try {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', PROXY_URL, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.timeout = 5000;
-    xhr.send(jsonData);
-  } catch (e) {}
-
-  // --- الطريقة 2: احتياطي sendBeacon لضمان وصول Purchase و Lead ---
-  setTimeout(function() {
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    try { navigator.sendBeacon(PROXY_URL, blob); } catch(e) {}
-    try { navigator.sendBeacon(WORKER_URL, blob); } catch(e) {}
-  }, 100);
+    doFetch(WORKER_URL, payload).catch(() => {
+      doBeacon(WORKER_URL, payload);
+    });
+  } catch(e) {
+    try { doBeacon(WORKER_URL, payload); } catch(e2) {}
+  }
 }
 
-// ✅ الدالة المركزية للتتبع
+// الدالة المركزية للتتبع
 function trackEvent(eventName, customData = {}, userDataOverride = {}) {
   const eventId = generateEventId(eventName);
   const extId = getExternalId();
   const { fbp, fbc } = getFbCookies();
   const currentUser = getCurrentUserData();
-
+  
   const userData = {
     external_id: extId,
     client_user_agent: navigator.userAgent,
@@ -366,18 +406,20 @@ function trackEvent(eventName, customData = {}, userDataOverride = {}) {
     ...(currentUser.ph && { ph: currentUser.ph }),
     ...userDataOverride
   };
-
+  
   const fullCustomData = {
     currency: 'DZD',
     event_source_url: window.location.href,
     ...customData
   };
-
+  
   // Pixel
-  try { fbq('track', eventName, fullCustomData, { eventID: eventId }); } catch (e) {}
-
-  // CAPI عبر الوسيط
-  sendToCAPI({
+  try {
+    fbq('track', eventName, fullCustomData, { eventID: eventId });
+  } catch (e) {}
+  
+  // CAPI عبر Worker
+  const payload = {
     event_name: eventName,
     event_id: eventId,
     event_time: Math.floor(Date.now() / 1000),
@@ -385,18 +427,20 @@ function trackEvent(eventName, customData = {}, userDataOverride = {}) {
     event_source_url: window.location.href,
     user_data: userData,
     custom_data: fullCustomData
-  });
-
+  };
+  
+  sendToCAPI(payload);
+  
   return eventId;
 }
 
-// ✅ تتبع الأحداث المخصصة
+// تتبع الأحداث المخصصة
 function trackCustom(eventName, customData = {}, userDataOverride = {}) {
   const eventId = generateEventId(eventName);
   const extId = getExternalId();
   const { fbp, fbc } = getFbCookies();
   const currentUser = getCurrentUserData();
-
+  
   const userData = {
     external_id: extId,
     client_user_agent: navigator.userAgent,
@@ -407,15 +451,15 @@ function trackCustom(eventName, customData = {}, userDataOverride = {}) {
     ...(currentUser.ph && { ph: currentUser.ph }),
     ...userDataOverride
   };
-
+  
   const fullCustomData = {
     currency: 'DZD',
     event_source_url: window.location.href,
     ...customData
   };
-
+  
   try { fbq('trackCustom', eventName, fullCustomData, { eventID: eventId }); } catch (e) {}
-
+  
   sendToCAPI({
     event_name: eventName,
     event_id: eventId,
@@ -425,7 +469,7 @@ function trackCustom(eventName, customData = {}, userDataOverride = {}) {
     user_data: userData,
     custom_data: fullCustomData
   });
-
+  
   return eventId;
 }
 
@@ -438,13 +482,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   renderGrid('fn');
   renderGrid('fm');
   initLazyLoad();
-
+  
   trackEvent('PageView', {
     content_name: 'perfume_store_homepage',
     content_category: 'perfumes',
     content_type: 'website'
   });
-
+  
   setTimeout(() => {
     trackEvent('ViewContent', {
       content_name: 'perfume_store',
@@ -453,7 +497,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       content_ids: ['store_view']
     });
   }, 1000);
-
+  
   document.getElementById('wa-link')?.addEventListener('click', () => {
     trackCustom('WhatsAppClick', {
       content_name: 'whatsapp_button',
@@ -465,9 +509,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 // ===== SHEETS =====
 async function loadSheet(sec) {
   const url = SH[sec];
-  try { const r = await fetch(url, {signal: AbortSignal.timeout(5000)}); if (r.ok) { parseCSV(await r.text(), sec); return; } } catch(e) {}
-  try { const r = await fetch(PROXY + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)}); if (r.ok) { parseCSV(await r.text(), sec); return; } } catch(e) {}
-  try { const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)}); if (r.ok) { parseCSV(await r.text(), sec); return; } } catch(e) {}
+  try {
+    const r = await fetch(url, {signal: AbortSignal.timeout(5000)});
+    if (r.ok) { parseCSV(await r.text(), sec); return; }
+  } catch(e) {}
+  try {
+    const r = await fetch(PROXY + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
+    if (r.ok) { parseCSV(await r.text(), sec); return; }
+  } catch(e) {}
+  try {
+    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
+    if (r.ok) { parseCSV(await r.text(), sec); return; }
+  } catch(e) {}
   useFallback(sec);
 }
 
@@ -832,7 +885,7 @@ function openConf(){
   const wilaya=document.getElementById('f-wilaya').value.trim();
   const commune=document.getElementById('f-commune').value.trim();
   const del=document.getElementById('f-del').value;
-
+  
   let ok=true;
   const chk=(fid,eid,fn)=>{
     const inp=document.getElementById(fid), err=document.getElementById(eid);
@@ -840,15 +893,15 @@ function openConf(){
     err.classList.toggle('show',fail); inp.classList.toggle('er',fail);
     if(fail)ok=false;
   };
-
+  
   chk('f-name','e-name');
   chk('f-phone','e-phone',v=>/^0[5-7]\d{8}$/.test(v));
   chk('f-wilaya','e-wilaya');
   chk('f-commune','e-commune');
   chk('f-del','e-del');
-
+  
   if(!ok){toast('أكمل جميع الحقول','er');return;}
-
+  
   const totalWithDel = calcTotal(del);
   trackEvent('Lead', {
     value: totalWithDel,
@@ -856,7 +909,7 @@ function openConf(){
     content_type: 'product',
     num_items: getTI()
   });
-
+  
   const dlbl=del==='500'?'للمكتب 500 دج':'للمنزل 700 دج';
   document.getElementById('conf-msg').textContent='الإجمالي: '+totalWithDel+' دج — '+dlbl;
   document.getElementById('cov').classList.add('open');
@@ -864,11 +917,11 @@ function openConf(){
 
 function closeConf(){document.getElementById('cov').classList.remove('open');}
 
-// ✅ Purchase قبل Telegram
+// ✅ الخطوة 4: Purchase قبل Telegram
 async function submitOrder(){
   if(sending)return;
   closeConf(); sending=true;
-
+  
   const name=document.getElementById('f-name').value.trim();
   const phone=document.getElementById('f-phone').value.trim();
   const wilaya=document.getElementById('f-wilaya').value.trim();
