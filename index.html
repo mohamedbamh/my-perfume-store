@@ -238,81 +238,43 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;color:#1f2937;padding-bot
 const TG_TOKEN = '7965308065:AAFEc12iTfYtXaEh25Sw6T6R_QgPTkMLL1A';
 const TG_CHAT  = '7643049426';
 
-// روابط الشيتات
 const SH = {
   n:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRNP6X6dAlq210UcSR4_fX7mroSjdYmA_iTpoW86Zn59l5gNm-ePy4l5OM9REi_bXuscb-eJeFYAUeT/pub?gid=0&single=true&output=csv',
   r:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTcWvXgpmPtvWvPQmWquGhNfSmT2P2NrdMDk_llsMAZiFCFJ22DFicfd_JkSC4GHB0Vk49pygMtIvK9/pub?gid=0&single=true&output=csv',
   fn: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvnkYOH5bwhjFkA5xZVIipL9Z8CHwY3rllh7vxlj8G-uU9k-u-HpwbDn2hV6G10nKYld1yRhmEQ_0_/pub?gid=0&single=true&output=csv',
   fm: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSI0_xbyrPJwiVWQTdBp0uPOLLQ1sscgvZCu_EDHvpB0ZE4cpPV0nSOMCYxtq5QTE7MOll6-pznvPMN/pub?gid=0&single=true&output=csv'
 };
-const PROXY = 'https://api.allorigins.win/raw?url=';
 
 const PRICES = {2:1900,3:2600,4:3100,5:3600,6:4100,7:4800,8:5300};
 
-// ===== STATE =====
 let DB  = {n:[],r:[],fn:[],fm:[]};
 let SEL = {n:{},r:{},fn:{},fm:{}};
 let packQty=0, innerTab='n', cartOpen=false;
 let sending=false, toastTm=null;
 
-// ============== نظام التتبع المتكامل ==============
+// ============== نظام التتبع ==============
 const WORKER_URL = 'https://meta-capi.bamh1804.workers.dev';
+const PROXY_URL = 'https://script.google.com/macros/s/AKfycbyZt69ZLyE2tjDHMZnOr7g1cZCxw2o10q0Zz-M7HzJsHtvUJol_epXEb4uMWqIHAdd2Iw/exec';
 
-// ✅ الخطوة 1: external_id مقاوم لجميع المتصفحات
 function getExternalId() {
   const KEY = '_ext_id';
   let extId = null;
-  
   try { extId = localStorage.getItem(KEY); } catch(e) {}
-  
-  if (!extId) {
-    try { extId = sessionStorage.getItem(KEY); } catch(e) {}
-  }
-  
-  if (!extId) {
-    try {
-      const match = document.cookie.match(new RegExp(KEY + '=([^;]+)'));
-      if (match) extId = match[1];
-    } catch(e) {}
-  }
-  
+  if (!extId) { try { extId = sessionStorage.getItem(KEY); } catch(e) {} }
+  if (!extId) { try { const match = document.cookie.match(new RegExp(KEY + '=([^;]+)')); if (match) extId = match[1]; } catch(e) {} }
   if (!extId) {
     extId = 'ext_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     try { localStorage.setItem(KEY, extId); } catch(e) {}
     try { sessionStorage.setItem(KEY, extId); } catch(e) {}
-    try {
-      document.cookie = KEY + '=' + extId + ';path=/;max-age=31536000;SameSite=Lax';
-    } catch(e) {}
+    try { document.cookie = KEY + '=' + extId + ';path=/;max-age=31536000;SameSite=Lax'; } catch(e) {}
   }
-  
   return extId;
 }
 
-// ✅ الخطوة 3: استخراج fbclid من URL
-function getFbcFromUrl() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const fbclid = params.get('fbclid');
-    if (fbclid) {
-      const fbc = 'fb.1.' + Date.now() + '.' + fbclid;
-      try {
-        document.cookie = '_fbc=' + fbc + ';path=/;max-age=7776000;SameSite=Lax';
-      } catch(e) {}
-      return fbc;
-    }
-  } catch(e) {}
-  return '';
-}
-
-const URL_FBC = getFbcFromUrl();
-
-// استخراج fbp و fbc مع fallback
 function getFbCookies() {
   let fbp = '', fbc = '';
-  
   try {
-    const cookies = document.cookie.split(';');
-    cookies.forEach(c => {
+    document.cookie.split(';').forEach(c => {
       const parts = c.trim().split('=');
       if (parts.length >= 2) {
         const key = parts[0].trim();
@@ -322,125 +284,82 @@ function getFbCookies() {
       }
     });
   } catch(e) {}
-  
-  // إنشاء fbp محلي إذا لم يوجد
   if (!fbp) {
     fbp = 'fb.1.' + Date.now() + '.' + Math.random().toString(36).substr(2, 9);
-    try {
-      document.cookie = '_fbp=' + fbp + ';path=/;max-age=7776000;SameSite=Lax';
-    } catch(e) {}
+    try { document.cookie = '_fbp=' + fbp + ';path=/;max-age=7776000;SameSite=Lax'; } catch(e) {}
   }
-  
-  if (!fbc && URL_FBC) fbc = URL_FBC;
-  
   return { fbp, fbc };
 }
 
-// بيانات المستخدم من الفورم
 function getCurrentUserData() {
   const name = document.getElementById('f-name')?.value?.trim() || '';
   const phone = document.getElementById('f-phone')?.value?.trim() || '';
   const nameParts = name.split(' ');
-  const firstName = nameParts[0] || '';
-  const lastName = nameParts.slice(1).join(' ') || '';
-  
-  return {
-    fn: firstName,
-    ln: lastName,
-    ph: phone.replace(/^0/, '213')
-  };
+  return { fn: nameParts[0] || '', ln: nameParts.slice(1).join(' ') || '', ph: phone.replace(/^0/, '213') };
 }
 
-// توليد event_id فريد
 function generateEventId(eventName) {
   return eventName + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// ✅ الخطوة 2: إرسال آمن مع fallback لـ sendBeacon
+// ✅ الإرسال متعدد الطبقات
 function sendToCAPI(payload) {
-  const doFetch = (url, data) => {
-    try {
-      return fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        keepalive: true
-      });
-    } catch(e) {
-      return Promise.reject(e);
-    }
-  };
+  const jsonData = JSON.stringify(payload);
+  let sent = false;
 
-  const doBeacon = (url, data) => {
-    try {
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      return navigator.sendBeacon(url, blob);
-    } catch(e) {
-      return false;
-    }
-  };
-
+  // الطريقة 1: XHR إلى Google Apps Script
   try {
-    doFetch(WORKER_URL, payload).catch(() => {
-      doBeacon(WORKER_URL, payload);
-    });
-  } catch(e) {
-    try { doBeacon(WORKER_URL, payload); } catch(e2) {}
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', PROXY_URL, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 5000;
+    xhr.onload = function() { if (xhr.status === 200) sent = true; };
+    xhr.send(jsonData);
+  } catch(e) {}
+
+  // الطريقة 2: sendBeacon بـ text/plain
+  setTimeout(function() {
+    if (!sent) {
+      const blob = new Blob([jsonData], { type: 'text/plain' });
+      try { navigator.sendBeacon(PROXY_URL, blob); sent = true; } catch(e) {}
+      try { navigator.sendBeacon(WORKER_URL, blob); sent = true; } catch(e) {}
+    }
+  }, 150);
+
+  // الطريقة 3: Image Pixel للأحداث المهمة
+  const importantEvents = ['Purchase', 'Lead', 'InitiateCheckout', 'AddToCart'];
+  if (importantEvents.includes(payload.event_name)) {
+    setTimeout(function() {
+      if (!sent) {
+        try {
+          const ed = encodeURIComponent;
+          const { fbp } = getFbCookies();
+          const extId = getExternalId();
+          const params = [
+            'id=941013868540136',
+            'ev=' + ed(payload.event_name),
+            'dl=' + ed(window.location.href),
+            'ts=' + Date.now(),
+            'cd[currency]=DZD',
+            'cd[value]=' + (payload.custom_data?.value || 0),
+            'eid=' + ed(payload.event_id || ''),
+            'fbp=' + ed(fbp),
+            'exid=' + ed(extId),
+            'noscript=0'
+          ].join('&');
+          new Image().src = 'https://www.facebook.com/tr?' + params;
+        } catch(e) {}
+      }
+    }, 500);
   }
 }
 
-// الدالة المركزية للتتبع
 function trackEvent(eventName, customData = {}, userDataOverride = {}) {
   const eventId = generateEventId(eventName);
   const extId = getExternalId();
   const { fbp, fbc } = getFbCookies();
   const currentUser = getCurrentUserData();
-  
-  const userData = {
-    external_id: extId,
-    client_user_agent: navigator.userAgent,
-    ...(fbp && { fbp }),
-    ...(fbc && { fbc }),
-    ...(currentUser.fn && { fn: currentUser.fn }),
-    ...(currentUser.ln && { ln: currentUser.ln }),
-    ...(currentUser.ph && { ph: currentUser.ph }),
-    ...userDataOverride
-  };
-  
-  const fullCustomData = {
-    currency: 'DZD',
-    event_source_url: window.location.href,
-    ...customData
-  };
-  
-  // Pixel
-  try {
-    fbq('track', eventName, fullCustomData, { eventID: eventId });
-  } catch (e) {}
-  
-  // CAPI عبر Worker
-  const payload = {
-    event_name: eventName,
-    event_id: eventId,
-    event_time: Math.floor(Date.now() / 1000),
-    action_source: 'website',
-    event_source_url: window.location.href,
-    user_data: userData,
-    custom_data: fullCustomData
-  };
-  
-  sendToCAPI(payload);
-  
-  return eventId;
-}
 
-// تتبع الأحداث المخصصة
-function trackCustom(eventName, customData = {}, userDataOverride = {}) {
-  const eventId = generateEventId(eventName);
-  const extId = getExternalId();
-  const { fbp, fbc } = getFbCookies();
-  const currentUser = getCurrentUserData();
-  
   const userData = {
     external_id: extId,
     client_user_agent: navigator.userAgent,
@@ -451,15 +370,15 @@ function trackCustom(eventName, customData = {}, userDataOverride = {}) {
     ...(currentUser.ph && { ph: currentUser.ph }),
     ...userDataOverride
   };
-  
+
   const fullCustomData = {
     currency: 'DZD',
     event_source_url: window.location.href,
     ...customData
   };
-  
-  try { fbq('trackCustom', eventName, fullCustomData, { eventID: eventId }); } catch (e) {}
-  
+
+  try { fbq('track', eventName, fullCustomData, { eventID: eventId }); } catch (e) {}
+
   sendToCAPI({
     event_name: eventName,
     event_id: eventId,
@@ -469,7 +388,45 @@ function trackCustom(eventName, customData = {}, userDataOverride = {}) {
     user_data: userData,
     custom_data: fullCustomData
   });
-  
+
+  return eventId;
+}
+
+function trackCustom(eventName, customData = {}, userDataOverride = {}) {
+  const eventId = generateEventId(eventName);
+  const extId = getExternalId();
+  const { fbp, fbc } = getFbCookies();
+  const currentUser = getCurrentUserData();
+
+  const userData = {
+    external_id: extId,
+    client_user_agent: navigator.userAgent,
+    ...(fbp && { fbp }),
+    ...(fbc && { fbc }),
+    ...(currentUser.fn && { fn: currentUser.fn }),
+    ...(currentUser.ln && { ln: currentUser.ln }),
+    ...(currentUser.ph && { ph: currentUser.ph }),
+    ...userDataOverride
+  };
+
+  const fullCustomData = {
+    currency: 'DZD',
+    event_source_url: window.location.href,
+    ...customData
+  };
+
+  try { fbq('trackCustom', eventName, fullCustomData, { eventID: eventId }); } catch (e) {}
+
+  sendToCAPI({
+    event_name: eventName,
+    event_id: eventId,
+    event_time: Math.floor(Date.now() / 1000),
+    action_source: 'website',
+    event_source_url: window.location.href,
+    user_data: userData,
+    custom_data: fullCustomData
+  });
+
   return eventId;
 }
 
@@ -477,18 +434,15 @@ function trackCustom(eventName, customData = {}, userDataOverride = {}) {
 document.addEventListener('DOMContentLoaded', async ()=>{
   renderPackBtns();
   await Promise.all(['n','r','fn','fm'].map(sec=>loadSheet(sec)));
-  renderGrid('n');
-  renderGrid('r');
-  renderGrid('fn');
-  renderGrid('fm');
+  renderGrid('n'); renderGrid('r'); renderGrid('fn'); renderGrid('fm');
   initLazyLoad();
-  
+
   trackEvent('PageView', {
     content_name: 'perfume_store_homepage',
     content_category: 'perfumes',
     content_type: 'website'
   });
-  
+
   setTimeout(() => {
     trackEvent('ViewContent', {
       content_name: 'perfume_store',
@@ -497,7 +451,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       content_ids: ['store_view']
     });
   }, 1000);
-  
+
   document.getElementById('wa-link')?.addEventListener('click', () => {
     trackCustom('WhatsAppClick', {
       content_name: 'whatsapp_button',
@@ -510,15 +464,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 async function loadSheet(sec) {
   const url = SH[sec];
   try {
-    const r = await fetch(url, {signal: AbortSignal.timeout(5000)});
-    if (r.ok) { parseCSV(await r.text(), sec); return; }
-  } catch(e) {}
-  try {
-    const r = await fetch(PROXY + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
-    if (r.ok) { parseCSV(await r.text(), sec); return; }
-  } catch(e) {}
-  try {
-    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const r = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (r.ok) { parseCSV(await r.text(), sec); return; }
   } catch(e) {}
   useFallback(sec);
@@ -553,9 +502,10 @@ function useFallback(sec) {
   if(sec==='fn') DB.fn=[['Oud Rose',900],['Amber Elixir',1200],['Rose Intense',1500],['Musk Lady',1000],['Vanilla Noir',1350],['Iris Royale',1800]].map(([n,p])=>mk(n,'fn',p));
   if(sec==='fm') DB.fm=[['Oud Royal',950],['Amber Wood',1300],['Cedar Noir',1600],['Musk Homme',1050],['Vanilla Homme',1400],['Leather Royale',1900]].map(([n,p])=>mk(n,'fm',p));
 }
+
 function mk(n,s,p){return {id:n+'__'+s,name:n,img:'',price:p,sec:s};}
 
-// ===== UI FUNCTIONS =====
+// ===== UI =====
 function renderPackBtns(){
   const g=document.getElementById('pack-grid'); g.innerHTML='';
   Object.entries(PRICES).forEach(([q,p])=>{
@@ -569,8 +519,7 @@ function renderPackBtns(){
 
 function selectPack(q){
   if(packQty===q)return;
-  SEL.n={}; SEL.r={};
-  packQty=q;
+  SEL.n={}; SEL.r={}; packQty=q;
   document.querySelectorAll('.pb').forEach(b=>b.classList.remove('sel'));
   document.getElementById('pb'+q).classList.add('sel');
   updateProg(); refreshAll(); updateCart();
@@ -623,12 +572,7 @@ function renderGrid(sec){
       handleAdd(p,sec);
     });
     const dxBtn = card.querySelector('.del-x');
-    if(dxBtn){
-      dxBtn.addEventListener('click',(e)=>{
-        e.stopPropagation();
-        handleRemove(p,sec);
-      });
-    }
+    if(dxBtn) dxBtn.addEventListener('click',(e)=>{ e.stopPropagation(); handleRemove(p,sec); });
     card.addEventListener('contextmenu',(e)=>e.preventDefault());
     g.appendChild(card);
   });
@@ -637,20 +581,14 @@ function renderGrid(sec){
 let imgObserver = null;
 function initLazyLoad(){
   if(!('IntersectionObserver' in window)){
-    document.querySelectorAll('img[data-src]').forEach(img=>{
-      img.src=img.dataset.src; delete img.dataset.src;
-    });
+    document.querySelectorAll('img[data-src]').forEach(img=>{ img.src=img.dataset.src; delete img.dataset.src; });
     return;
   }
   imgObserver = new IntersectionObserver((entries)=>{
     entries.forEach(entry=>{
       if(entry.isIntersecting){
         const img=entry.target;
-        if(img.dataset.src){
-          img.src=img.dataset.src;
-          delete img.dataset.src;
-          imgObserver.unobserve(img);
-        }
+        if(img.dataset.src){ img.src=img.dataset.src; delete img.dataset.src; imgObserver.unobserve(img); }
       }
     });
   },{rootMargin:'200px 0px',threshold:0});
@@ -664,12 +602,7 @@ function handleAdd(p,sec){
     SEL[sec][p.id]=(SEL[sec][p.id]||0)+1;
     updateFN(); toast('✓ '+p.name,'ok');
     refreshCard(p.id,sec); updateCnt('f'); updateCart();
-    trackEvent('AddToCart', {
-      content_ids: [p.id], content_name: p.name,
-      content_type: 'product',
-      content_category: sec==='fn'?'مميزة نسائي':'مميزة رجالي',
-      value: p.price
-    });
+    trackEvent('AddToCart', { content_ids: [p.id], content_name: p.name, content_type: 'product', content_category: sec==='fn'?'مميزة نسائي':'مميزة رجالي', value: p.price });
     return;
   }
   if(!packQty){toast('اختر الباك أولاً 👆','wa');return;}
@@ -677,12 +610,7 @@ function handleAdd(p,sec){
   SEL[sec][p.id]=(SEL[sec][p.id]||0)+1;
   toast('✓ '+p.name,'ok');
   refreshCard(p.id,sec); updateProg(); updateCnt('n'); updateCart();
-  trackEvent('AddToCart', {
-    content_ids: [p.id], content_name: p.name,
-    content_type: 'product',
-    content_category: sec==='n'?'نسائي':'رجالي',
-    value: PRICES[packQty]||0
-  });
+  trackEvent('AddToCart', { content_ids: [p.id], content_name: p.name, content_type: 'product', content_category: sec==='n'?'نسائي':'رجالي', value: PRICES[packQty]||0 });
 }
 
 function handleRemove(p,sec){
@@ -691,26 +619,21 @@ function handleRemove(p,sec){
   if(SEL[sec][p.id]<=0)delete SEL[sec][p.id];
   toast('🗑️ '+p.name,'in');
   refreshCard(p.id,sec);
-  if(!isMimaza(sec)){updateProg();updateCnt('n');}
-  else{updateFN();updateCnt('f');}
+  if(!isMimaza(sec)){updateProg();updateCnt('n');} else{updateFN();updateCnt('f');}
   updateCart();
 }
 
 function removeFromCart(id,sec){
   delete SEL[sec][id];
   refreshCard(id,sec);
-  if(!isMimaza(sec)){updateProg();updateCnt('n');}
-  else{updateFN();updateCnt('f');}
+  if(!isMimaza(sec)){updateProg();updateCnt('n');} else{updateFN();updateCnt('f');}
   updateCart(); renderCartItems();
 }
 
 function refreshCard(id,sec){
-  const card=document.getElementById('card__'+id);
-  const badge=document.getElementById('qb__'+id);
-  const delx=document.getElementById('dx__'+id);
+  const card=document.getElementById('card__'+id), badge=document.getElementById('qb__'+id), delx=document.getElementById('dx__'+id);
   if(!card||!badge)return;
-  const qty=SEL[sec][id]||0;
-  const sc=sec==='r'?'sp':isMimaza(sec)?'sg':'sb';
+  const qty=SEL[sec][id]||0, sc=sec==='r'?'sp':isMimaza(sec)?'sg':'sb';
   ['sb','sp','sg'].forEach(c=>card.classList.remove(c));
   if(qty>0)card.classList.add(sc);
   if(delx)delx.classList.toggle('show',qty>0);
@@ -720,8 +643,7 @@ function refreshCard(id,sec){
 function refreshAll(){['n','r','fn','fm'].forEach(s=>DB[s].forEach(p=>refreshCard(p.id,s)));}
 
 function updateFN(){
-  const pt=packTotal(), mt=mimazaTotal();
-  const hasDisc=pt>0||mt>=2;
+  const pt=packTotal(), mt=mimazaTotal(), hasDisc=pt>0||mt>=2;
   const el=document.getElementById('fn');
   if(!el)return;
   if(hasDisc){
@@ -748,8 +670,7 @@ function updateProg(){
 
 function updateCnt(sec){
   if(sec==='f'||isMimaza(sec)){
-    document.getElementById('cnt-fardi').textContent=
-      Object.values(SEL.fn).reduce((a,b)=>a+b,0)+Object.values(SEL.fm).reduce((a,b)=>a+b,0);
+    document.getElementById('cnt-fardi').textContent=Object.values(SEL.fn).reduce((a,b)=>a+b,0)+Object.values(SEL.fm).reduce((a,b)=>a+b,0);
   } else {
     document.getElementById('cnt-pack').textContent=packTotal();
   }
@@ -758,16 +679,9 @@ function updateCnt(sec){
 function mimazaTotal(){return Object.values(SEL.fn).reduce((a,b)=>a+b,0)+Object.values(SEL.fm).reduce((a,b)=>a+b,0);}
 
 function calcFP(){
-  const hasPack = packTotal()>0;
-  const mTotal  = mimazaTotal();
-  const hasDisc = hasPack || mTotal>=2;
+  const hasPack=packTotal()>0, mTotal=mimazaTotal(), hasDisc=hasPack||mTotal>=2;
   let sum=0;
-  ['fn','fm'].forEach(sec=>{
-    Object.entries(SEL[sec]).forEach(([id,qty])=>{
-      const p=DB[sec].find(x=>x.id===id);
-      if(p) sum+=(hasDisc?Math.round(p.price*.8):p.price)*qty;
-    });
-  });
+  ['fn','fm'].forEach(sec=>{ Object.entries(SEL[sec]).forEach(([id,qty])=>{ const p=DB[sec].find(x=>x.id===id); if(p) sum+=(hasDisc?Math.round(p.price*.8):p.price)*qty; }); });
   return sum;
 }
 
@@ -785,46 +699,32 @@ function updateCart(){
 }
 
 function getSub(){
-  const pt=packTotal(), mt=mimazaTotal();
-  const parts=[];
+  const pt=packTotal(), mt=mimazaTotal(), parts=[];
   if(pt)parts.push(pt+' من الباك');
   if(mt)parts.push(mt+' مميزة');
   return parts.join(' | ');
 }
 
-function toggleCart(){
-  cartOpen=!cartOpen;
-  document.getElementById('citems').classList.toggle('open',cartOpen);
-  if(cartOpen)renderCartItems();
-}
+function toggleCart(){ cartOpen=!cartOpen; document.getElementById('citems').classList.toggle('open',cartOpen); if(cartOpen)renderCartItems(); }
 
 function renderCartItems(){
   const el=document.getElementById('citems'); let html='';
   const pt2=packTotal(), pp2=calcPP();
-  if(pt2>0){
-    html='<div style="font-size:11px;font-weight:700;color:var(--gy);margin:6px 0 3px">🎁 الباك — '+pp2+' دج</div>'+html;
-  }
+  if(pt2>0) html='<div style="font-size:11px;font-weight:700;color:var(--gy);margin:6px 0 3px">🎁 الباك — '+pp2+' دج</div>'+html;
   const addS=(sec,lbl)=>{
     const keys=Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0);
     if(!keys.length)return;
     html+='<div style="font-size:11px;font-weight:700;color:var(--gy);margin:6px 0 3px">'+lbl+'</div>';
     keys.forEach(id=>{
       const p=DB[sec].find(x=>x.id===id); if(!p)return;
-      const qty=SEL[sec][id];
-      let pr='';
-      if(isMimaza(sec)){
-        const hasDisc2=packTotal()>0||mimazaTotal()>=2;
-        const up=hasDisc2?Math.round(p.price*.8):p.price;
-        pr=up*qty+' دج'+(hasDisc2?' (-20%)':'');
-      }
+      const qty=SEL[sec][id]; let pr='';
+      if(isMimaza(sec)){ const hasDisc2=packTotal()>0||mimazaTotal()>=2; const up=hasDisc2?Math.round(p.price*.8):p.price; pr=up*qty+' دج'+(hasDisc2?' (-20%)':''); }
       html+='<div class="ci-row"><button class="ci-del" data-id="'+id+'" data-sec="'+sec+'">✕</button><span class="ci-nm">'+p.name+'</span><span class="ci-qty">×'+qty+'</span><span class="ci-pr">'+pr+'</span></div>';
     });
   };
   addS('n','🌸 نسائي'); addS('r','💼 رجالي'); addS('fn','🌸 نسائية مميزة'); addS('fm','💼 رجالية مميزة');
   el.innerHTML=html||'<div style="text-align:center;color:var(--gy);font-size:12px;padding:8px">السلة فارغة</div>';
-  el.querySelectorAll('.ci-del').forEach(btn=>{
-    btn.addEventListener('click',function(e){e.stopPropagation();removeFromCart(this.dataset.id,this.dataset.sec);});
-  });
+  el.querySelectorAll('.ci-del').forEach(btn=>{ btn.addEventListener('click',function(e){e.stopPropagation();removeFromCart(this.dataset.id,this.dataset.sec);}); });
 }
 
 function doReset(){
@@ -849,8 +749,7 @@ function closeCO(){document.getElementById('ov-co').classList.remove('open');}
 
 function updateOS(){
   const del=parseInt(document.getElementById('f-del')?.value||0)||0;
-  const pp=calcPP(), fp=calcFP(), hp=packTotal()>0;
-  let rows='';
+  const pp=calcPP(), fp=calcFP(), hp=packTotal()>0; let rows='';
   if(pp)rows+='<div class="os-r"><span>🎁 الباك ('+packTotal()+' عطور)</span><span>'+pp+' دج</span></div>';
   const mt2=mimazaTotal(), hasDisc2=hp||mt2>=2;
   if(fp)rows+='<div class="os-r"><span>👑 مميزة'+(hasDisc2?' (خصم 20%)':'')+'</span><span>'+fp+' دج</span></div>';
@@ -860,23 +759,11 @@ function updateOS(){
 }
 
 function getTI(){return packTotal()+mimazaTotal();}
-function getCIDs(){
-  const ids=[];
-  ['n','r','fn','fm'].forEach(s=>Object.keys(SEL[s]).filter(k=>SEL[s][k]>0).forEach(id=>{
-    const p=DB[s].find(x=>x.id===id); if(p)ids.push(p.name);
-  }));
-  return ids;
-}
+function getCIDs(){ const ids=[]; ['n','r','fn','fm'].forEach(s=>Object.keys(SEL[s]).filter(k=>SEL[s][k]>0).forEach(id=>{ const p=DB[s].find(x=>x.id===id); if(p)ids.push(p.name); })); return ids; }
 
 function trackInitiateCheckout(){
   if(_icFired)return; _icFired=true;
-  trackEvent('InitiateCheckout', {
-    value: calcTotal(),
-    num_items: getTI(),
-    content_ids: getCIDs(),
-    content_type: 'product',
-    content_name: 'perfume_checkout'
-  });
+  trackEvent('InitiateCheckout', { value: calcTotal(), num_items: getTI(), content_ids: getCIDs(), content_type: 'product', content_name: 'perfume_checkout' });
 }
 
 function openConf(){
@@ -885,31 +772,12 @@ function openConf(){
   const wilaya=document.getElementById('f-wilaya').value.trim();
   const commune=document.getElementById('f-commune').value.trim();
   const del=document.getElementById('f-del').value;
-  
   let ok=true;
-  const chk=(fid,eid,fn)=>{
-    const inp=document.getElementById(fid), err=document.getElementById(eid);
-    const fail=fn?!fn(inp.value.trim()):!inp.value.trim();
-    err.classList.toggle('show',fail); inp.classList.toggle('er',fail);
-    if(fail)ok=false;
-  };
-  
-  chk('f-name','e-name');
-  chk('f-phone','e-phone',v=>/^0[5-7]\d{8}$/.test(v));
-  chk('f-wilaya','e-wilaya');
-  chk('f-commune','e-commune');
-  chk('f-del','e-del');
-  
+  const chk=(fid,eid,fn)=>{ const inp=document.getElementById(fid), err=document.getElementById(eid); const fail=fn?!fn(inp.value.trim()):!inp.value.trim(); err.classList.toggle('show',fail); inp.classList.toggle('er',fail); if(fail)ok=false; };
+  chk('f-name','e-name'); chk('f-phone','e-phone',v=>/^0[5-7]\d{8}$/.test(v)); chk('f-wilaya','e-wilaya'); chk('f-commune','e-commune'); chk('f-del','e-del');
   if(!ok){toast('أكمل جميع الحقول','er');return;}
-  
-  const totalWithDel = calcTotal(del);
-  trackEvent('Lead', {
-    value: totalWithDel,
-    content_name: 'order_form_completed',
-    content_type: 'product',
-    num_items: getTI()
-  });
-  
+  const totalWithDel=calcTotal(del);
+  trackEvent('Lead', { value: totalWithDel, content_name: 'order_form_completed', content_type: 'product', num_items: getTI() });
   const dlbl=del==='500'?'للمكتب 500 دج':'للمنزل 700 دج';
   document.getElementById('conf-msg').textContent='الإجمالي: '+totalWithDel+' دج — '+dlbl;
   document.getElementById('cov').classList.add('open');
@@ -917,11 +785,9 @@ function openConf(){
 
 function closeConf(){document.getElementById('cov').classList.remove('open');}
 
-// ✅ الخطوة 4: Purchase قبل Telegram
 async function submitOrder(){
   if(sending)return;
   closeConf(); sending=true;
-  
   const name=document.getElementById('f-name').value.trim();
   const phone=document.getElementById('f-phone').value.trim();
   const wilaya=document.getElementById('f-wilaya').value.trim();
@@ -931,70 +797,38 @@ async function submitOrder(){
   const total=calcTotal(del);
   const pt=packTotal(), hp=pt>0;
 
-  // ✅ أرسل Purchase فوراً قبل أي await
-  trackEvent('Purchase', {
-    value: total,
-    num_items: getTI(),
-    content_ids: getCIDs(),
-    content_type: 'product',
-    content_name: 'perfume_order'
-  });
+  // Purchase أولاً
+  trackEvent('Purchase', { value: total, num_items: getTI(), content_ids: getCIDs(), content_type: 'product', content_name: 'perfume_order' });
 
-  // تجهيز رسالة التليغرام
   const names=[];
-  ['n','r','fn','fm'].forEach(sec=>Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0).forEach(id=>{
-    const p=DB[sec].find(x=>x.id===id); const qty=SEL[sec][id];
-    if(p)for(let i=0;i<qty;i++)names.push(p.name);
-  }));
-
+  ['n','r','fn','fm'].forEach(sec=>Object.keys(SEL[sec]).filter(k=>SEL[sec][k]>0).forEach(id=>{ const p=DB[sec].find(x=>x.id===id); const qty=SEL[sec][id]; if(p)for(let i=0;i<qty;i++)names.push(p.name); }));
   const pp=calcPP(), fp=calcFP();
-  const lines=[
-    'طلب جديد','','العطور المختارة:',names.join(' , '),
-    '','معلومات الزبون:','الاسم: '+name,'الهاتف: '+phone,
-    'العنوان: '+commune+' - '+wilaya,'','تفاصيل الطلب:'
-  ];
+  const lines=['طلب جديد','','العطور المختارة:',names.join(' , '),'','معلومات الزبون:','الاسم: '+name,'الهاتف: '+phone,'العنوان: '+commune+' - '+wilaya,'','تفاصيل الطلب:'];
   if(pp)lines.push('الباقة: '+pt+' عطور بـ '+pp+' دج');
   const mt3=mimazaTotal(), hasD=hp||mt3>=2;
   if(fp)lines.push('العطور المميزة: '+fp+' دج'+(hasD?' (خصم 20%)':''));
-  lines.push('التوصيل: '+delLbl);
-  lines.push('السعر الاجمالي: '+total+' دج');
+  lines.push('التوصيل: '+delLbl); lines.push('السعر الاجمالي: '+total+' دج');
 
   try {
-    const url = 'https://api.telegram.org/bot'+TG_TOKEN+'/sendMessage';
-    const body = JSON.stringify({chat_id: TG_CHAT, text: lines.join('\n')});
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: body
-    });
+    const r = await fetch('https://api.telegram.org/bot'+TG_TOKEN+'/sendMessage', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({chat_id: TG_CHAT, text: lines.join('\n')}) });
     const d = await r.json();
     if(!d.ok) throw new Error(d.description||'فشل');
     showSucc();
-  } catch(e){
-    toast('فشل الإرسال: '+e.message,'er');
-  } finally { sending=false; }
+  } catch(e){ toast('فشل الإرسال: '+e.message,'er'); } finally { sending=false; }
 }
 
 function showSucc(){
-  document.getElementById('fv').style.display='none';
-  document.getElementById('sv').classList.add('show');
-  doReset();
-  let s=10; const cEl=document.getElementById('cd'), btn=document.getElementById('btn-new');
-  btn.disabled=true;
-  const tm=setInterval(()=>{
-    s--; cEl.textContent=s;
-    if(s<=0){clearInterval(tm);btn.disabled=false;document.getElementById('succ-sub').textContent='يمكنك بدء طلب جديد الآن ✓';}
-  },1000);
+  document.getElementById('fv').style.display='none'; document.getElementById('sv').classList.add('show'); doReset();
+  let s=10; const cEl=document.getElementById('cd'), btn=document.getElementById('btn-new'); btn.disabled=true;
+  const tm=setInterval(()=>{ s--; cEl.textContent=s; if(s<=0){clearInterval(tm);btn.disabled=false;document.getElementById('succ-sub').textContent='يمكنك بدء طلب جديد الآن ✓';} },1000);
 }
 
 function startNew(){closeCO();document.getElementById('btn-new').disabled=true;}
 
 function toast(msg,type='in'){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className='toast '+type+' show';
+  const el=document.getElementById('toast'); el.textContent=msg; el.className='toast '+type+' show';
   clearTimeout(toastTm); toastTm=setTimeout(()=>el.classList.remove('show'),2400);
 }
 </script>
-
 </body>
 </html>
