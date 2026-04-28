@@ -123,7 +123,16 @@ body{font-family:'Cairo',sans-serif;background:#f3f4f6;color:#1f2937;padding-bot
 </style>
 </head>
 <body>
-
+<div id="inapp-test" style="position:fixed;top:0;left:0;right:0;background:red;color:#fff;padding:15px;z-index:99999;font-size:14px;text-align:center;display:none;">
+  ✅ JavaScript يعمل! | <span id="inapp-ua"></span>
+</div>
+<script>
+(function(){
+  const el = document.getElementById('inapp-test');
+  el.style.display = 'block';
+  document.getElementById('inapp-ua').textContent = navigator.userAgent.substring(0, 60);
+})();
+</script>
 <div class="hdr">
   <h1>🌸 متجر العطور الفاخرة</h1>
   <p>اختر عطورك وأكمل طلبك بسهولة</p>
