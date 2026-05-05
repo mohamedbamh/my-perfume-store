@@ -169,8 +169,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="it ib" id="it-n" onclick="switchInner('n')">🌸 نسائي</button>
     <button class="it" id="it-r" onclick="switchInner('r')">💼 رجالي</button>
   </div>
-  <div class="pgrid" id="grid-n"></div>
-  <div class="pgrid" id="grid-r" style="display:none;"></div>
+  <div class="pgrid" id="grid-n"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
+  <div class="pgrid" id="grid-r" style="display:none;"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
 </div>
 
 <div class="sec" id="sec-fardi">
@@ -181,8 +181,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="it ib" id="it-fn" onclick="switchMimaza('fn')">🌸 نسائية مميزة</button>
     <button class="it" id="it-fm" onclick="switchMimaza('fm')">💼 رجالية مميزة</button>
   </div>
-  <div class="pgrid" id="grid-fn"></div>
-  <div class="pgrid" id="grid-fm" style="display:none;"></div>
+  <div class="pgrid" id="grid-fn"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
+  <div class="pgrid" id="grid-fm" style="display:none;"><div class="ldg"><div class="spin"></div>جاري التحميل...</div></div>
 </div>
 
 <div class="cbar">
@@ -252,12 +252,20 @@ const TG_CHAT  = '7643049426';
 
 const PRICES = {2:1900,3:2600,4:3100,5:3600,6:4100,7:4800,8:5300};
 
-// ===== DATA =====
-const PERFUMES = {
-  n:  ['Delina','Miss Dior','Kayali','La Vie Est Belle','Chloe','Flowerbomb','Idole','Paradoxe','Black Opium','Libre','Jadore','Alien'],
-  r:  ['Bleu de Chanel','Sauvage','Acqua Di Gio','Boss Bottled','Invictus','One Million','Y YSL','Dior Homme','Le Male','Eros','Spicebomb','Allure'],
-  fn: [{n:'Oud Rose',p:900},{n:'Amber Elixir',p:1200},{n:'Rose Intense',p:1500},{n:'Musk Lady',p:1000},{n:'Vanilla Noir',p:1350},{n:'Iris Royale',p:1800},{n:'Royal Oud',p:2000},{n:'Jasmine Luxe',p:1100},{n:'Santal Blanc',p:1600}],
-  fm: [{n:'Oud Royal',p:950},{n:'Amber Wood',p:1300},{n:'Cedar Noir',p:1600},{n:'Musk Homme',p:1050},{n:'Vanilla Homme',p:1400},{n:'Leather Royale',p:1900},{n:'Aventus Style',p:2100},{n:'Tobacco Vanille',p:1700},{n:'Baccarat Style',p:2200}]
+// ===== GOOGLE SHEETS =====
+const SH = {
+  n:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRNP6X6dAlq210UcSR4_fX7mroSjdYmA_iTpoW86Zn59l5gNm-ePy4l5OM9REi_bXuscb-eJeFYAUeT/pub?gid=0&single=true&output=csv',
+  r:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTcWvXgpmPtvWvPQmWquGhNfSmT2P2NrdMDk_llsMAZiFCFJ22DFicfd_JkSC4GHB0Vk49pygMtIvK9/pub?gid=0&single=true&output=csv',
+  fn: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvnkYOH5bwhjFkA5xZVIipL9Z8CHwY3rllh7vxlj8G-uU9k-u-HpwbDn2hV6G10nKYld1yRhmEQ_0_/pub?gid=0&single=true&output=csv',
+  fm: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSI0_xbyrPJwiVWQTdBp0uPOLLQ1sscgvZCu_EDHvpB0ZE4cpPV0nSOMCYxtq5QTE7MOll6-pznvPMN/pub?gid=0&single=true&output=csv'
+};
+
+// بيانات احتياطية
+const FALLBACK = {
+  n:  ['Delina','Miss Dior','Kayali','La Vie Est Belle','Chloe','Flowerbomb','Idole','Paradoxe'],
+  r:  ['Bleu de Chanel','Sauvage','Acqua Di Gio','Boss Bottled','Invictus','One Million','Y YSL','Dior Homme'],
+  fn: [{n:'Oud Rose',p:900},{n:'Amber Elixir',p:1200},{n:'Rose Intense',p:1500},{n:'Musk Lady',p:1000},{n:'Vanilla Noir',p:1350},{n:'Iris Royale',p:1800}],
+  fm: [{n:'Oud Royal',p:950},{n:'Amber Wood',p:1300},{n:'Cedar Noir',p:1600},{n:'Musk Homme',p:1050},{n:'Vanilla Homme',p:1400},{n:'Leather Royale',p:1900}]
 };
 
 let DB = {n:[],r:[],fn:[],fm:[]};
@@ -266,11 +274,65 @@ let packQty=0, innerTab='n', cartOpen=false;
 let sending=false, toastTm=null;
 
 // ===== INIT DATA =====
-function initData() {
-  DB.n = PERFUMES.n.map((n,i) => ({id:n+'__n',name:n,img:'',price:0,sec:'n'}));
-  DB.r = PERFUMES.r.map((n,i) => ({id:n+'__r',name:n,img:'',price:0,sec:'r'}));
-  DB.fn = PERFUMES.fn.map(p => ({id:p.n+'__fn',name:p.n,img:'',price:p.p,sec:'fn'}));
-  DB.fm = PERFUMES.fm.map(p => ({id:p.n+'__fm',name:p.n,img:'',price:p.p,sec:'fm'}));
+async function initData() {
+  let loaded = false;
+  try {
+    const cached = localStorage.getItem('perfume_data_v2');
+    if (cached) {
+      DB = JSON.parse(cached);
+      loaded = true;
+    }
+  } catch(e) {}
+
+  if (!loaded) {
+    await Promise.all(['n','r','fn','fm'].map(sec => loadSheet(sec)));
+    try { localStorage.setItem('perfume_data_v2', JSON.stringify(DB)); } catch(e) {}
+  }
+}
+
+async function loadSheet(sec) {
+  const url = SH[sec];
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const r = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (r.ok) { parseCSV(await r.text(), sec); return; }
+  } catch(e) {}
+  useFallback(sec);
+}
+
+function parseCSV(csv, sec) {
+  const lines = csv.split('\n').filter(l => l.trim());
+  if (lines.length < 2) { useFallback(sec); return; }
+  const heads = lines[0].split(',').map(h => h.trim().replace(/^\uFEFF/,'').replace(/"/g,''));
+  
+  lines.slice(1).forEach(line => {
+    const vals = line.match(/(".*?"|[^,]+)/g) || line.split(',');
+    const clean = vals.map(v => v.trim().replace(/^"|"$/g,''));
+    const row = {};
+    heads.forEach((h, i) => row[h] = clean[i] || '');
+    
+    const name = (row['الاسم'] || row['اسم العطر'] || row['name'] || '').trim();
+    const img = (row['الصورة'] || row['صورة'] || row['image'] || '').trim();
+    const act = (row['نشط'] || row['active'] || row['متوفر'] || 'نعم').trim();
+    const price = parseFloat(row['سعر_فردي'] || row['السعر'] || row['price'] || 0) || 0;
+    
+    if (!name) return;
+    if (act === 'لا' || act === 'no' || act === 'false' || act === '0') return;
+    
+    const src = img ? (img.startsWith('http') ? img : 'https://' + img) : '';
+    DB[sec].push({ id: name + '__' + sec, name, img: src, price, sec });
+  });
+  
+  if (!DB[sec].length) useFallback(sec);
+}
+
+function useFallback(sec) {
+  if (sec === 'n') DB.n = FALLBACK.n.map(n => ({ id: n + '__n', name: n, img: '', price: 0, sec: 'n' }));
+  if (sec === 'r') DB.r = FALLBACK.r.map(n => ({ id: n + '__r', name: n, img: '', price: 0, sec: 'r' }));
+  if (sec === 'fn') DB.fn = FALLBACK.fn.map(p => ({ id: p.n + '__fn', name: p.n, img: '', price: p.p, sec: 'fn' }));
+  if (sec === 'fm') DB.fm = FALLBACK.fm.map(p => ({ id: p.n + '__fm', name: p.n, img: '', price: p.p, sec: 'fm' }));
 }
 
 // ===== TRACKING =====
@@ -298,7 +360,6 @@ function getFbCookies() {
       const parts = c.trim().split('=');
       if (parts.length >= 2) {
         if (parts[0].trim() === '_fbp') fbp = parts.slice(1).join('=').trim();
-        if (parts[0].trim() === '_fbc') fbc = parts.slice(1).join('=').trim();
       }
     });
   } catch(e) {}
@@ -320,7 +381,7 @@ function generateEventId(eventName) {
   return eventName + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// ✅ تتبع TikTok
+// تتبع TikTok
 function trackTikTok(eventName, params = {}) {
   try {
     if (typeof ttq !== 'undefined') {
@@ -333,7 +394,7 @@ function trackTikTok(eventName, params = {}) {
   } catch(e) {}
 }
 
-// ✅ تتبع Meta (Pixel + CAPI)
+// تتبع Meta (Pixel + CAPI)
 function trackMeta(eventName, customData = {}) {
   const eventId = generateEventId(eventName);
   const extId = getExternalId();
@@ -356,10 +417,8 @@ function trackMeta(eventName, customData = {}) {
     ...customData
   };
 
-  // Facebook Pixel
   try { fbq('track', eventName, fullCustomData, { eventID: eventId }); } catch (e) {}
 
-  // CAPI عبر Function
   const payload = {
     event_name: eventName,
     event_id: eventId,
@@ -384,25 +443,23 @@ function trackMeta(eventName, customData = {}) {
   }, 150);
 }
 
-// ✅ دالة التتبع الموحدة
+// دالة التتبع الموحدة
 function trackEvent(eventName, customData = {}) {
   trackMeta(eventName, customData);
   
-  // TikTok tracking
   const ttParams = {
     currency: 'DZD',
     value: customData.value || 0,
     content_name: customData.content_name || '',
     content_type: customData.content_type || 'product',
-    content_ids: customData.content_ids || [],
     num_items: customData.num_items || 0
   };
   trackTikTok(eventName, ttParams);
 }
 
 // ===== BOOT =====
-document.addEventListener('DOMContentLoaded', ()=>{
-  initData();
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await initData();
   renderPackBtns();
   renderGrid('n'); renderGrid('r'); renderGrid('fn'); renderGrid('fm');
   initLazyLoad();
@@ -418,7 +475,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 });
 
-// ===== UI FUNCTIONS =====
+// ===== UI =====
 function renderPackBtns(){
   const g=document.getElementById('pack-grid'); g.innerHTML='';
   Object.entries(PRICES).forEach(([q,p])=>{
@@ -463,7 +520,13 @@ function switchTab(tab){
 }
 
 function renderGrid(sec){
-  const g=document.getElementById('grid-'+sec); g.innerHTML='';
+  const g=document.getElementById('grid-'+sec);
+  if (!g) return;
+  g.innerHTML='';
+  if(!DB[sec].length){
+    g.innerHTML='<div class="ldg">لا توجد عطور</div>';
+    return;
+  }
   DB[sec].forEach(p=>{
     const card=document.createElement('div');
     card.className='pc'; card.id='card__'+p.id;
@@ -471,7 +534,10 @@ function renderGrid(sec){
     card.innerHTML=`
       <div class="qb ${qcls}" id="qb__${p.id}">1</div>
       <button class="del-x" id="dx__${p.id}" title="حذف">✕</button>
-      <div class="iw"><div class="ni">🌸</div></div>
+      <div class="iw">
+        <div class="ni">🌸</div>
+        ${p.img?`<img data-src="${p.img}" alt="${p.name}" decoding="async" onerror="this.style.opacity='0';this.style.zIndex='-1'">`:''}
+      </div>
       <div class="pn">${p.name}</div>
       ${(sec==='fn'||sec==='fm')?`<div class="pp">${p.price} دج</div>`:''}
     `;
@@ -482,6 +548,14 @@ function renderGrid(sec){
     const dxBtn = card.querySelector('.del-x');
     if(dxBtn) dxBtn.addEventListener('click',(e)=>{ e.stopPropagation(); handleRemove(p,sec); });
     g.appendChild(card);
+  });
+  observeNewImgs();
+}
+
+function observeNewImgs() {
+  document.querySelectorAll('img[data-src]').forEach(img => {
+    img.src = img.dataset.src;
+    delete img.dataset.src;
   });
 }
 
@@ -679,7 +753,6 @@ async function submitOrder(){
   const total=calcTotal(del);
   const pt=packTotal();
 
-  // ✅ Purchase - Meta + TikTok
   trackEvent('Purchase', { value: total, num_items: getTI(), content_ids: getCIDs(), content_type: 'product', content_name: 'perfume_order' });
 
   const names=[];
